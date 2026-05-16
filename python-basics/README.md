@@ -181,7 +181,7 @@
 
 ---
 
-markdown## [rest_api_server.py](rest_api_server.py)　サーバ側のREST API処理
+## [rest_api_server.py](rest_api_server.py)　サーバ側のREST API処理
 
 - `Flask` の基本セットアップ
 - ルーティングの定義（`@app.route`, `methods=["GET", "POST", ...]`）
