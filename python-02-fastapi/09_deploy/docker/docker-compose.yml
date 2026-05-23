@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: fastapi_app
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - SQLALCHEMY_DATABASE_URL=postgresql://fastapiuser:fastapipass@postgres:5432/appdb
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/postgres/pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init.d:/docker-entrypoint-initdb.d
+    environment:
+      POSTGRES_USER: fastapiuser
+      POSTGRES_PASSWORD: fastapipass
+      POSTGRES_DB: appdb
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fastapiuser -d appdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    ports:
+      - "81:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: password
+    volumes:
+      - ./docker/pgadmin:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    restart: always
