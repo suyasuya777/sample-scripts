@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import String, DateTime, Boolean
+from sqlalchemy.orm import Mapped, mapped_column
 from db import Base
 from datetime import datetime
+
 
 # ==================================================
 # モデル
@@ -10,20 +12,20 @@ class Memo(Base):
     # テーブル名
     __tablename__ = "memos"
     # メモID：PK：自動インクリメント
-    memo_id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     # タイトル：未入力不可
-    title = Column(String(50), nullable=False)
+    title: Mapped[str] = mapped_column(String(50), nullable=False)
     # 詳細：未入力可
-    description = Column(String(255), nullable=True)
+    description: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # 作成日時
-    created_at = Column(DateTime, default=datetime.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now())
     # 更新日時
-    updated_at = Column(DateTime)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # ▽▽▽ MemoStatusSchemaのフィールド ▽▽▽
     # 優先度
-    priority = Column(String(10), nullable=False)
+    priority: Mapped[str] = mapped_column(String(10), nullable=False)
     # 期限日
-    due_date = Column(DateTime, nullable=True)
+    due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # 完了フラグ
-    is_completed = Column(Boolean, default=False)
+    is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     # △△△ MemoStatusSchemaのフィールド △△△

@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
+
 class Settings(BaseSettings):
     secret_key: str = "dev-secret"
     database_url: str = "sqlite:///./dev.db"
