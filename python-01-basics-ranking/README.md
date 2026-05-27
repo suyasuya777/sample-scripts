@@ -80,6 +80,12 @@ END
 
 ### `main.py`
 
+**インポートするモジュール**
+```python
+from roboter.controller import conversation
+```
+
+
 | 処理 | 内容 |
 |------|------|
 | `conversation.talk_about_restaurant()` を呼び出す | アプリのエントリーポイント |
@@ -88,6 +94,12 @@ END
 
 ### `controller/conversation.py`
 
+**インポートするモジュール**
+```python
+from roboter.models import robot
+```
+
+
 | 関数 | 内容 |
 |------|------|
 | `talk_about_restaurant()` | `RestaurantRobot` を生成し、4つのメソッドを順番に呼び出す |
@@ -95,6 +107,13 @@ END
 ---
 
 ### `models/robot.py` ─ `RestaurantRobot` クラス
+
+**インポートするモジュール**
+```python
+from roboter.models import ranking
+from roboter.views import console
+```
+
 
 | メソッド | 内容 |
 |----------|------|
@@ -106,7 +125,15 @@ END
 
 ---
 
-### `models/ranking.py` ─ `Ranking_Model` クラス
+### `models/ranking.py` ─ `RankingModel` クラス
+
+**インポートするモジュール**
+```python
+import collections  # defaultdict によるランキングデータの初期化
+import csv          # DictReader / DictWriter による CSV 読み書き
+import os           # os.path.abspath, os.path.join による CSV パス解決
+```
+
 
 | メソッド | 内容 |
 |----------|------|
@@ -119,6 +146,13 @@ END
 ---
 
 ### `views/console.py`
+
+**インポートするモジュール**
+```python
+import os      # os.path.abspath, os.path.join によるテンプレートパス解決
+import string  # string.Template によるプレースホルダー置換
+```
+
 
 | 関数 | 内容 |
 |------|------|
@@ -158,10 +192,8 @@ blue,1
 
 ## 注意点・気になる箇所
 
-| 項目 | 内容 |
-|------|------|
-| **CSVの改行コード** | `ranking.csv` の行末に `\r\r` が含まれており、読み込み時に注意が必要 |
-| **ranking.csvのパス解決** | `Ranking_Model.__init__` でプロジェクトルートを `os.path` で計算しているため、実行ディレクトリに依存しない設計 |
-| **保存タイミング** | `increment()` のたびに毎回 `save()` を呼ぶため、呼び出し頻度が高い場合はI/Oコストが増大する |
-| **存在しないレストランの登録** | `ask_user_favorite()` では入力値をそのまま `increment()` に渡すため、CSVにない新しいレストランも自動追加される（`defaultdict(int)` により初期値0から加算） |
-| **クラス名** | `Ranking_Model` はPEPスタイル的には `RankingModel` が推奨（スネークケースはモジュール名・変数名に使用） |
+| 項目 | 内容 | 対応 |
+|------|------|------|
+| **保存タイミング** | `increment()` のたびに毎回 `save()` を呼ぶため、呼び出し頻度が高い場合はI/Oコストが増大する | 今回は対象外（設計判断） |
+
+

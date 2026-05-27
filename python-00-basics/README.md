@@ -4,6 +4,12 @@
 
 ## [list_operations.py](list_operations.py)　listの操作
 
+**インポートするモジュール**
+```python
+import copy  # deepcopy によるリストのコピー
+```
+
+
 - リストの作成・初期化
 - 要素の追加（`append`, `insert`, `extend`）
 - 要素の削除（`remove`, `pop`, `del`）
@@ -16,6 +22,12 @@
 ---
 
 ## [dict_operations.py](dict_operations.py)　dictの操作
+
+**インポートするモジュール**
+```python
+import copy  # deepcopy によるネスト辞書のコピー
+```
+
 
 - 辞書の作成・初期化
 - 要素の追加・更新（`dict[key] = value`）
@@ -30,6 +42,12 @@
 
 ## [set_operations.py](set_operations.py)　setの操作
 
+**インポートするモジュール**
+```python
+# 標準のset操作のみ使用（追加インポート不要）
+```
+
+
 - セットの作成・初期化
 - 要素の追加・削除（`add`, `remove`, `discard`）
 - 集合演算（和集合 `|`, 積集合 `&`, 差集合 `-`, 対称差 `^`）
@@ -40,6 +58,12 @@
 ---
 
 ## [loop_operations.py](loop_operations.py)　ループの操作
+
+**インポートするモジュール**
+```python
+import itertools  # count, cycle, chain, product, combinations, permutations 等
+```
+
 
 - `for` ループの基本
 - `while` ループの基本
@@ -54,6 +78,14 @@
 
 ## [file_read_write.py](file_read_write.py)　ファイルの読み書き
 
+**インポートするモジュール**
+```python
+import os                    # os.path.exists, os.path.join 等
+from pathlib import Path     # Path.exists, Path.read_text 等
+import shutil                # copy, move, rmtree 等
+```
+
+
 - ファイルのオープン・クローズ（`open`, `with`）
 - テキストファイルの読み込み（`read`, `readline`, `readlines`）
 - テキストファイルの書き込み（`write`, `writelines`）
@@ -63,6 +95,13 @@
 ---
 
 ## [template_file_read_write.py](template_file_read_write.py)　テンプレートファイルの読み書き
+
+**インポートするモジュール**
+```python
+import string                                        # string.Template
+from jinja2 import Environment, FileSystemLoader     # テンプレートレンダリング
+```
+
 
 - テンプレートファイルの読み込み
 - `string.Template` による変数の埋め込み（`$変数名`）
@@ -75,6 +114,12 @@
 
 ## [temp_file_read_write.py](temp_file_read_write.py)　一時ファイルの読み書き
 
+**インポートするモジュール**
+```python
+import tempfile  # NamedTemporaryFile, TemporaryFile, TemporaryDirectory
+```
+
+
 - `tempfile` モジュールの基本
 - 一時ファイルの作成（`NamedTemporaryFile`, `TemporaryFile`）
 - 一時ディレクトリの作成（`TemporaryDirectory`）
@@ -82,6 +127,14 @@
 ---
 
 ## [memory_file_read_write.py](memory_file_read_write.py)　メモリファイルの読み書き
+
+**インポートするモジュール**
+```python
+import io       # StringIO, BytesIO
+import csv      # メモリ上でのCSV生成・パース
+import zipfile  # メモリ上でのZIPファイル操作
+```
+
 
 - `io.StringIO` によるテキストのメモリ上読み書き
 - `io.BytesIO` によるバイナリのメモリ上読み書き
@@ -94,6 +147,12 @@
 ---
 
 ## [csv_file_read_write.py](csv_file_read_write.py)　CSVファイルの読み書き
+
+**インポートするモジュール**
+```python
+import csv  # reader, DictReader, writer, DictWriter
+```
+
 
 - `csv` モジュールの基本
 - CSVファイルの読み込み（`csv.reader`）
@@ -108,6 +167,12 @@
 
 ## [zip_file_compress_extract.py](zip_file_compress_extract.py)　ZIPファイルの圧縮・展開
 
+**インポートするモジュール**
+```python
+import zipfile  # ZipFile, ZipInfo, namelist, infolist
+```
+
+
 - `zipfile` モジュールの基本
 - ZIPファイルの作成・圧縮（`ZipFile`, `write`）
 - ZIPファイルの展開（`extractall`, `extract`）
@@ -118,6 +183,12 @@
 ---
 
 ## [ini_file_read_write.py](ini_file_read_write.py)　INI形式ファイルの読み書き
+
+**インポートするモジュール**
+```python
+import configparser  # ConfigParser, read, sections, options, get, set, write
+```
+
 
 - `configparser` モジュールの基本
 - INIファイルの読み込み（`read`, `read_string`）
@@ -131,6 +202,12 @@
 
 ## [yaml_file_read_write.py](yaml_file_read_write.py)　YAML形式ファイルの読み書き
 
+**インポートするモジュール**
+```python
+import yaml  # safe_load, safe_load_all, dump（pip install pyyaml）
+```
+
+
 - `pyyaml` モジュールの基本（`import yaml`）
 - YAMLファイルの読み込み（`yaml.safe_load`）
 - 複数ドキュメントの読み込み（`yaml.safe_load_all`）
@@ -141,6 +218,12 @@
 ---
 
 ## [json_file_read_write.py](json_file_read_write.py)　JSONファイルの読み書き
+
+**インポートするモジュール**
+```python
+import json  # load, loads, dump, dumps
+```
+
 
 - `json` モジュールの基本
 - JSONファイルの読み込み（`json.load`）
@@ -154,6 +237,14 @@
 
 ## [log_file_config_write.py](log_file_config_write.py)　ログファイルの設定・書き込み
 
+**インポートするモジュール**
+```python
+import logging                                                              # 基本ロガー
+from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler  # ローテーション
+import logging.config                                                       # 設定ファイルからの読み込み
+```
+
+
 - `logging` モジュールの基本
 - ログレベルの設定（`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`）
 - ファイルへのログ出力（`FileHandler`）
@@ -166,6 +257,12 @@
 ---
 
 ## [rest_api_client.py](rest_api_client.py)　クライアント側のREST API処理
+
+**インポートするモジュール**
+```python
+import requests  # get, post, put, delete（pip install requests）
+```
+
 
 - `requests` ライブラリの基本
 - GETリクエスト（`requests.get`）
@@ -182,6 +279,13 @@
 ---
 
 ## [rest_api_server.py](rest_api_server.py)　サーバ側のREST API処理
+
+**インポートするモジュール**
+```python
+from flask import Flask, request, jsonify, g  # pip install flask
+import sqlite3                                # DB接続管理
+```
+
 
 - `Flask` の基本セットアップ
 - ルーティングの定義（`@app.route`, `methods=["GET", "POST", ...]`）

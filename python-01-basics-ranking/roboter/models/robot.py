@@ -6,7 +6,7 @@ class RestaurantRobot:
     def __init__(self, name="Robo", user_name=""):
         self.name = name
         self.user_name = user_name
-        self.ranking_model = ranking.Ranking_Model()
+        self.ranking_model = ranking.RankingModel()
 
     def hello(self):
         template = console.get_template("hello.txt")
@@ -40,8 +40,8 @@ class RestaurantRobot:
 
     def ask_user_favorite(self):
         while True:
-            template = console. get_template("which_restaurant.txt")
-            restaurant = input(template.substitute(user_name = self.user_name))
+            template = console.get_template("which_restaurant.txt")
+            restaurant = input(template.substitute(user_name=self.user_name))
             if restaurant:
                 self.ranking_model.increment(restaurant)
                 break

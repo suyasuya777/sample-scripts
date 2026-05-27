@@ -3,7 +3,7 @@ import csv
 import os
 
 
-class Ranking_Model:
+class RankingModel:
     def __init__(self, csv_file="ranking.csv"):
         base_dir = os.path.dirname(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,7 +22,7 @@ class Ranking_Model:
         return self.data
 
     def save(self):
-        with open(self.csv_file, "w", encoding="utf8") as f:
+        with open(self.csv_file, "w", encoding="utf-8", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=self.column)
             writer.writeheader()
             for n, c in self.data.items():
