@@ -9,14 +9,21 @@
 - config.py      : 環境変数・設定管理
 - tests/         : pytestテスト群
 """
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from database import Base, engine
 from routers import item, user
 import models  # noqa: F401 – ORMモデルをBaseに登録するためインポート
 
-Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Sample Project Structure")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+
+
+app = FastAPI(title="Sample Project Structure", lifespan=lifespan)
 
 app.include_router(user.router)
 app.include_router(item.router)

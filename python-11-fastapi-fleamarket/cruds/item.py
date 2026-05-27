@@ -1,29 +1,35 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from schemas import ItemCreate, ItemUpdate
 from models import Item
 
 
-def find_all(db: Session):
-    return db.query(Item).all()
+async def find_all(db: AsyncSession):
+    result = await db.execute(select(Item))
+    return result.scalars().all()
 
 
-def find_by_id(db: Session, id: int, user_id: int):
-    return db.query(Item).filter(Item.id == id).filter(Item.user_id == user_id).first()
+async def find_by_id(db: AsyncSession, id: int, user_id: int):
+    result = await db.execute(
+        select(Item).where(Item.id == id, Item.user_id == user_id)
+    )
+    return result.scalar_one_or_none()
 
 
-def find_by_name(db: Session, name: str):
-    return db.query(Item).filter(Item.name.like(f"%{name}%")).all()
+async def find_by_name(db: AsyncSession, name: str):
+    result = await db.execute(select(Item).where(Item.name.like(f"%{name}%")))
+    return result.scalars().all()
 
 
-def create(db: Session, item_create: ItemCreate, user_id: int):
+async def create(db: AsyncSession, item_create: ItemCreate, user_id: int):
     new_item = Item(**item_create.model_dump(), user_id=user_id)
     db.add(new_item)
-    db.commit()
+    await db.commit()
     return new_item
 
 
-def update(db: Session, id: int, item_update: ItemUpdate, user_id: int):
-    item = find_by_id(db, id, user_id)
+async def update(db: AsyncSession, id: int, item_update: ItemUpdate, user_id: int):
+    item = await find_by_id(db, id, user_id)
     if item is None:
         return None
 
@@ -34,14 +40,14 @@ def update(db: Session, id: int, item_update: ItemUpdate, user_id: int):
     )
     item.status = item.status if item_update.status is None else item_update.status
     db.add(item)
-    db.commit()
+    await db.commit()
     return item
 
 
-def delete(db: Session, id: int, user_id: int):
-    item = find_by_id(db, id, user_id)
+async def delete(db: AsyncSession, id: int, user_id: int):
+    item = await find_by_id(db, id, user_id)
     if item is None:
         return None
     db.delete(item)
-    db.commit()
+    await db.commit()
     return item

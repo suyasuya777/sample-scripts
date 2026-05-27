@@ -6,7 +6,8 @@ from typing import Annotated
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from schemas import UserCreate, DecodedToken
 from models import User
 from config import get_settings
@@ -18,7 +19,7 @@ SECRET_KEY = get_settings().secret_key
 oauth2_schema = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
-def create_user(db: Session, user_create: UserCreate):
+async def create_user(db: AsyncSession, user_create: UserCreate):
     salt = base64.b64encode(os.urandom(32))
     hashed_password = hashlib.pbkdf2_hmac(
         "sha256", user_create.password.encode(), salt, 1000
@@ -28,13 +29,13 @@ def create_user(db: Session, user_create: UserCreate):
         username=user_create.username, password=hashed_password, salt=salt.decode()
     )
     db.add(new_user)
-    db.commit()
-
+    await db.commit()
     return new_user
 
 
-def authenticate_user(db: Session, username: str, password: str):
-    user = db.query(User).filter(User.username == username).first()
+async def authenticate_user(db: AsyncSession, username: str, password: str):
+    result = await db.execute(select(User).where(User.username == username))
+    user = result.scalar_one_or_none()
     if not user:
         return None
 

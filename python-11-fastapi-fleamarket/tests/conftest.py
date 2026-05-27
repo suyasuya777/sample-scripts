@@ -45,7 +45,7 @@ def user_fixture():
 @pytest.fixture()
 def client_fixture(session_fixture: Session, user_fixture: DecodedToken):
     def override_get_db():
-        return session_fixture
+        yield session_fixture
 
     def override_get_current_user():
         return user_fixture
@@ -57,3 +57,4 @@ def client_fixture(session_fixture: Session, user_fixture: DecodedToken):
     yield client
 
     app.dependency_overrides.clear()
+

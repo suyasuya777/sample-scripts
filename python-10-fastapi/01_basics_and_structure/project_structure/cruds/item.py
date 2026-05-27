@@ -1,19 +1,22 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from models.item import Item
 from schemas.item import ItemCreate
 
 
-def get_items(db: Session) -> list[Item]:
-    return db.query(Item).all()
+async def get_items(db: AsyncSession) -> list[Item]:
+    result = await db.execute(select(Item))
+    return result.scalars().all()
 
 
-def get_items_by_user(db: Session, user_id: int) -> list[Item]:
-    return db.query(Item).filter(Item.user_id == user_id).all()
+async def get_items_by_user(db: AsyncSession, user_id: int) -> list[Item]:
+    result = await db.execute(select(Item).where(Item.user_id == user_id))
+    return result.scalars().all()
 
 
-def create_item(db: Session, item_in: ItemCreate) -> Item:
+async def create_item(db: AsyncSession, item_in: ItemCreate) -> Item:
     item = Item(**item_in.model_dump())
     db.add(item)
-    db.commit()
-    db.refresh(item)
+    await db.commit()
+    await db.refresh(item)
     return item
