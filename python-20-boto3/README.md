@@ -1,6 +1,162 @@
 # AWS SDK for Python (boto3) サンプルプログラム集
 
-AWS の各サービスを boto3 で操作する実務向けサンプルプログラム集です。
+AWSの各サービスをboto3で操作する実務向けサンプルプログラム集です。
+
+---
+
+## 📋 サンプル一覧
+
+EC2
+
+01. [`ec2_describe_instances.py`](ec2/ec2_describe_instances.py)　―　インスタンス一覧取得（タグ・ステータスによる絞り込み）
+
+02. [`ec2_start_stop_reboot.py`](ec2/ec2_start_stop_reboot.py)　―　インスタンス起動・停止・再起動（ウェイター付き）
+
+03. [`ec2_describe_regions.py`](ec2/ec2_describe_regions.py)　―　全リージョン一覧取得（オプトインリージョン対応）
+
+04. [`ec2_unused_eip.py`](ec2/ec2_unused_eip.py)　―　未使用EIPの検出（コスト削減監査）
+
+05. [`ec2_security_groups.py`](ec2/ec2_security_groups.py)　―　セキュリティグループのルール確認（全開放ルール検出）
+
+06. [`ec2_old_ami.py`](ec2/ec2_old_ami.py)　―　AMI一覧と古いイメージの特定（スナップショット整理対象の洗い出し）
+
+07. [`ec2_snapshots.py`](ec2/ec2_snapshots.py)　―　スナップショット一覧と孤立スナップショットの検出
+
+08. [`ec2_modify_instance_type.py`](ec2/ec2_modify_instance_type.py)　―　インスタンスタイプ変更（停止→変更→起動の安全な手順）
+
+
+S3
+
+09. [`s3_list_buckets.py`](s3/s3_list_buckets.py)　―　バケット一覧取得（名前・作成日・リージョンの確認）
+
+10. [`s3_list_objects.py`](s3/s3_list_objects.py)　―　オブジェクト一覧取得（paginatorによる全件取得）
+
+11. [`s3_upload_download.py`](s3/s3_upload_download.py)　―　ファイルアップロード・ダウンロード（マルチパート・進捗コールバック）
+
+12. [`s3_public_access_block.py`](s3/s3_public_access_block.py)　―　パブリックアクセス設定の確認（全バケット一括セキュリティ監査）
+
+13. [`s3_bucket_policy.py`](s3/s3_bucket_policy.py)　―　バケットポリシーの取得・設定・削除（クロスアカウントアクセス対応）
+
+14. [`s3_lifecycle.py`](s3/s3_lifecycle.py)　―　ライフサイクルルール設定（Glacier移行・期限切れオブジェクト自動削除）
+
+15. [`s3_presigned_url.py`](s3/s3_presigned_url.py)　―　署名付きURL生成（アップロード用・ダウンロード用）
+
+
+IAM
+
+16. [`iam_users_access_keys.py`](iam/iam_users_access_keys.py)　―　ユーザー一覧とアクセスキーの状態・有効期間確認
+
+17. [`iam_roles_trust_policy.py`](iam/iam_roles_trust_policy.py)　―　ロール一覧と信頼ポリシー確認（クロスアカウントアクセス検出）
+
+18. [`iam_admin_policy_entities.py`](iam/iam_admin_policy_entities.py)　―　管理者ポリシーのアタッチ先確認（過剰権限の監査）
+
+19. [`iam_inline_policies.py`](iam/iam_inline_policies.py)　―　インラインポリシーの一覧確認（管理ポリシー移行対象の洗い出し）
+
+20. [`iam_access_key_last_used.py`](iam/iam_access_key_last_used.py)　―　アクセスキー最終使用日時の確認（未使用キーの検出と削除推奨）
+
+
+CloudWatch
+
+21. [`cloudwatch_alarm_state.py`](cloudwatch/cloudwatch_alarm_state.py)　―　ALARM状態のアラーム一覧（名前・メトリクス・閾値・SNS通知先の確認）
+
+22. [`cloudwatch_get_metrics.py`](cloudwatch/cloudwatch_get_metrics.py)　―　メトリクス統計値の取得（CPU使用率・ネットワーク転送量など）
+
+23. [`cloudwatch_put_metrics.py`](cloudwatch/cloudwatch_put_metrics.py)　―　カスタムメトリクスの送信（業務指標をCloudWatchに記録）
+
+24. [`cloudwatch_put_alarm.py`](cloudwatch/cloudwatch_put_alarm.py)　―　アラームの作成・更新（閾値・評価期間・SNS通知の設定）
+
+25. [`cloudwatch_dashboard.py`](cloudwatch/cloudwatch_dashboard.py)　―　ダッシュボードのJSON取得・更新（複数サービスの監視画面自動生成）
+
+
+CloudWatch Logs
+
+26. [`logs_list_log_groups.py`](cloudwatch-logs/logs_list_log_groups.py)　―　ロググループ一覧取得（保持期間未設定グループの検出）
+
+27. [`logs_filter_error.py`](cloudwatch-logs/logs_filter_error.py)　―　エラーログのフィルタ取得（キーワード・時間範囲指定）
+
+28. [`logs_insights_query.py`](cloudwatch-logs/logs_insights_query.py)　―　Logs Insightsクエリ実行（エラー集計・レスポンスタイム分析）
+
+29. [`logs_retention_policy.py`](cloudwatch-logs/logs_retention_policy.py)　―　保持期間の一括設定（コンプライアンス要件への対応）
+
+30. [`logs_describe_streams.py`](cloudwatch-logs/logs_describe_streams.py)　―　ログストリームの一覧取得（古いストリームの検出と整理）
+
+
+Lambda
+
+31. [`lambda_list_functions.py`](lambda/lambda_list_functions.py)　―　関数一覧とランタイム確認（EOLランタイムの検出）
+
+32. [`lambda_update_configuration.py`](lambda/lambda_update_configuration.py)　―　関数の設定・環境変数更新（複数関数への一括適用）
+
+33. [`lambda_concurrency.py`](lambda/lambda_concurrency.py)　―　同時実行数の確認（予約済み・プロビジョニング済み同時実行数の設定）
+
+34. [`lambda_invoke.py`](lambda/lambda_invoke.py)　―　関数の手動実行（同期・非同期・DryRunとFunctionError検出）
+
+35. [`lambda_aliases_versions.py`](lambda/lambda_aliases_versions.py)　―　エイリアスとバージョン管理（カナリアデプロイのルーティング設定）
+
+
+ECS
+
+36. [`ecs_list_clusters_services.py`](ecs/ecs_list_clusters_services.py)　―　クラスター・サービス一覧取得（稼働中・希望タスク数の確認）
+
+37. [`ecs_service_task_count.py`](ecs/ecs_service_task_count.py)　―　サービスのdesired/runningカウント確認（不一致・デプロイ失敗の検出）
+
+38. [`ecs_rolling_restart.py`](ecs/ecs_rolling_restart.py)　―　サービスのローリング再起動（forceNewDeployment＋ウェイター）
+
+39. [`ecs_list_tasks.py`](ecs/ecs_list_tasks.py)　―　タスク一覧と詳細確認（タスク定義・起動タイプ・プライベートIPの確認）
+
+40. [`ecs_task_definition.py`](ecs/ecs_task_definition.py)　―　タスク定義の最新リビジョン取得（コンテナ定義の読み取りと新規登録）
+
+
+SSM
+
+41. [`ssm_send_command.py`](ssm/ssm_send_command.py)　―　リモートコマンド実行（複数インスタンスへの一括実行とタグ指定）
+
+42. [`ssm_parameter_store.py`](ssm/ssm_parameter_store.py)　―　Parameter Storeの一括読み書き（SecureString復号・パス階層の一括取得）
+
+43. [`ssm_patch_compliance.py`](ssm/ssm_patch_compliance.py)　―　パッチコンプライアンス確認（未適用パッチが存在するインスタンスの検出）
+
+
+RDS
+
+44. [`rds_describe_instances.py`](rds/rds_describe_instances.py)　―　DBインスタンス一覧と状態確認（エンジンバージョン・マルチAZ設定の確認）
+
+45. [`rds_snapshot.py`](rds/rds_snapshot.py)　―　スナップショット作成と世代管理（古いスナップショットの検出と削除）
+
+
+SQS
+
+46. [`sqs_queue_attributes.py`](sqs/sqs_queue_attributes.py)　―　キューの属性取得（滞留メッセージ数・DLQ設定の確認）
+
+47. [`sqs_dlq_reprocess.py`](sqs/sqs_dlq_reprocess.py)　―　DLQメッセージの再処理（元キューへの再送信と削除）
+
+
+SNS
+
+48. [`sns_publish.py`](sns/sns_publish.py)　―　トピックへのメッセージ発行（属性フィルタリング・FIFOトピック対応）
+
+
+VPC
+
+49. [`vpc_describe_network.py`](vpc/vpc_describe_network.py)　―　VPC・サブネット・ルートテーブル確認（パブリック・プライベート判定）
+
+
+Secrets Manager
+
+50. [`secretsmanager_get_put.py`](secrets-manager/secretsmanager_get_put.py)　―　シークレットの取得と更新（DBパスワード等のJSON形式シークレット管理）
+
+
+SES
+
+51. [`ses_list_identities.py`](ses/ses_list_identities.py)　―　送信ドメインのID一覧取得（未検証アイデンティティの検出）
+
+52. [`ses_dkim_spf_status.py`](ses/ses_dkim_spf_status.py)　―　DKIM・SPF検証ステータス確認（メール到達性向上のための認証設定確認）
+
+53. [`ses_send_email.py`](ses/ses_send_email.py)　―　メール送信（テキスト・HTML両対応、設定セットによるイベント追跡）
+
+54. [`ses_send_statistics.py`](ses/ses_send_statistics.py)　―　送信統計・バウンス率の確認（アカウント送信制限リスクの監視）
+
+55. [`ses_suppression_list.py`](ses/ses_suppression_list.py)　―　サプレッションリストの管理（BOUNCE・COMPLAINT別確認と解除）
+
 
 ---
 
@@ -25,7 +181,7 @@ AWS の各サービスを boto3 で操作する実務向けサンプルプログ
 
 ## EC2
 
-### [`ec2_describe_instances.py`](ec2/ec2_describe_instances.py)
+### [`ec2_describe_instances.py`](ec2/ec2_describe_instances.py)　―　インスタンス一覧取得（タグ・ステータスによる絞り込み）
 
 **インポートするモジュール**
 ```python
@@ -37,7 +193,7 @@ import boto3
 - インスタンス ID・タイプ・状態・タグ情報の整形出力
 - フィルター条件（タグ、ステータス）を指定した絞り込み取得
 
-### [`ec2_start_stop_reboot.py`](ec2/ec2_start_stop_reboot.py)
+### [`ec2_start_stop_reboot.py`](ec2/ec2_start_stop_reboot.py)　―　インスタンス起動・停止・再起動（ウェイター付き）
 
 **インポートするモジュール**
 ```python
@@ -49,7 +205,7 @@ import boto3
 - 対象インスタンス ID を引数で受け取る汎用的な実装
 - 操作前後のステータス確認とウェイター（`instance_running` / `instance_stopped`）の活用
 
-### [`ec2_describe_regions.py`](ec2/ec2_describe_regions.py)
+### [`ec2_describe_regions.py`](ec2/ec2_describe_regions.py)　―　全リージョン一覧取得（オプトインリージョン対応）
 
 **インポートするモジュール**
 ```python
@@ -61,7 +217,7 @@ import boto3
 - リージョン名とエンドポイントの一覧表示
 - オプトインリージョン（`opt-in-not-required` / `opted-in`）のフィルタリング
 
-### [`ec2_unused_eip.py`](ec2/ec2_unused_eip.py)
+### [`ec2_unused_eip.py`](ec2/ec2_unused_eip.py)　―　未使用EIPの検出（コスト削減監査）
 
 **インポートするモジュール**
 ```python
@@ -73,7 +229,7 @@ import boto3
 - インスタンスおよびネットワークインターフェースに未関連付けの EIP 抽出
 - コスト削減のための未使用 EIP レポート出力
 
-### [`ec2_security_groups.py`](ec2/ec2_security_groups.py)
+### [`ec2_security_groups.py`](ec2/ec2_security_groups.py)　―　セキュリティグループのルール確認（全開放ルール検出）
 
 **インポートするモジュール**
 ```python
@@ -85,7 +241,7 @@ import boto3
 - 0.0.0.0/0（全開放）ルールが存在するグループの検出
 - セキュリティグループのルール一覧を整形して出力
 
-### [`ec2_old_ami.py`](ec2/ec2_old_ami.py)
+### [`ec2_old_ami.py`](ec2/ec2_old_ami.py)　―　AMI一覧と古いイメージの特定（スナップショット整理対象の洗い出し）
 
 **インポートするモジュール**
 ```python
@@ -98,7 +254,7 @@ from datetime import datetime, timezone, timedelta
 - 作成日が一定期間以上経過した古い AMI の検出
 - 不要な AMI と紐づくスナップショットの整理対象リスト出力
 
-### [`ec2_snapshots.py`](ec2/ec2_snapshots.py)
+### [`ec2_snapshots.py`](ec2/ec2_snapshots.py)　―　スナップショット一覧と孤立スナップショットの検出
 
 **インポートするモジュール**
 ```python
@@ -110,7 +266,7 @@ import boto3
 - スナップショットのサイズ・作成日・説明などの情報整形
 - 古いスナップショットや孤立スナップショット（AMI 未登録）の検出
 
-### [`ec2_modify_instance_type.py`](ec2/ec2_modify_instance_type.py)
+### [`ec2_modify_instance_type.py`](ec2/ec2_modify_instance_type.py)　―　インスタンスタイプ変更（停止→変更→起動の安全な手順）
 
 **インポートするモジュール**
 ```python
@@ -126,7 +282,7 @@ import boto3
 
 ## S3
 
-### [`s3_list_buckets.py`](s3/s3_list_buckets.py)
+### [`s3_list_buckets.py`](s3/s3_list_buckets.py)　―　バケット一覧取得（名前・作成日・リージョンの確認）
 
 **インポートするモジュール**
 ```python
@@ -138,7 +294,7 @@ import boto3
 - バケット名・作成日・リージョンの一覧表示
 - バケット数のカウントとサマリー出力
 
-### [`s3_list_objects.py`](s3/s3_list_objects.py)
+### [`s3_list_objects.py`](s3/s3_list_objects.py)　―　オブジェクト一覧取得（paginatorによる全件取得）
 
 **インポートするモジュール**
 ```python
@@ -150,7 +306,7 @@ import boto3
 - プレフィックス・デリミタを使ったフォルダ階層での絞り込み
 - ページネーションを使った大量オブジェクトの全件取得
 
-### [`s3_upload_download.py`](s3/s3_upload_download.py)
+### [`s3_upload_download.py`](s3/s3_upload_download.py)　―　ファイルアップロード・ダウンロード（マルチパート・進捗コールバック）
 
 **インポートするモジュール**
 ```python
@@ -163,7 +319,7 @@ import os
 - マルチパートアップロードの設定（`TransferConfig`）と進捗コールバックの活用
 - メタデータ・ContentType・ACL の指定方法
 
-### [`s3_public_access_block.py`](s3/s3_public_access_block.py)
+### [`s3_public_access_block.py`](s3/s3_public_access_block.py)　―　パブリックアクセス設定の確認（全バケット一括セキュリティ監査）
 
 **インポートするモジュール**
 ```python
@@ -175,7 +331,7 @@ import boto3
 - 全バケットのパブリックアクセス設定を一括スキャンするセキュリティ監査の実装
 - ブロック設定（BlockPublicAcls / IgnorePublicAcls / BlockPublicPolicy / RestrictPublicBuckets）の詳細確認
 
-### [`s3_bucket_policy.py`](s3/s3_bucket_policy.py)
+### [`s3_bucket_policy.py`](s3/s3_bucket_policy.py)　―　バケットポリシーの取得・設定・削除（クロスアカウントアクセス対応）
 
 **インポートするモジュール**
 ```python
@@ -188,7 +344,7 @@ import json
 - バケットポリシーの JSON 解析と Principal / Action / Resource の読み取り
 - クロスアカウントアクセス許可ポリシーのテンプレート実装
 
-### [`s3_lifecycle.py`](s3/s3_lifecycle.py)
+### [`s3_lifecycle.py`](s3/s3_lifecycle.py)　―　ライフサイクルルール設定（Glacier移行・期限切れオブジェクト自動削除）
 
 **インポートするモジュール**
 ```python
@@ -200,7 +356,7 @@ import boto3
 - 一定日数後に Glacier / Intelligent-Tiering へ移行するルールの実装
 - 期限切れオブジェクトと不完全なマルチパートアップロードの自動削除設定
 
-### [`s3_presigned_url.py`](s3/s3_presigned_url.py)
+### [`s3_presigned_url.py`](s3/s3_presigned_url.py)　―　署名付きURL生成（アップロード用・ダウンロード用）
 
 **インポートするモジュール**
 ```python
@@ -217,7 +373,7 @@ from botocore.config import Config
 
 ## IAM
 
-### [`iam_users_access_keys.py`](iam/iam_users_access_keys.py)
+### [`iam_users_access_keys.py`](iam/iam_users_access_keys.py)　―　ユーザー一覧とアクセスキーの状態・有効期間確認
 
 **インポートするモジュール**
 ```python
@@ -230,7 +386,7 @@ from datetime import datetime, timezone, timedelta
 - アクセスキーの最終使用日時・有効期間の確認
 - 長期間未使用のアクセスキーや期限超過キーのセキュリティ監査
 
-### [`iam_roles_trust_policy.py`](iam/iam_roles_trust_policy.py)
+### [`iam_roles_trust_policy.py`](iam/iam_roles_trust_policy.py)　―　ロール一覧と信頼ポリシー確認（クロスアカウントアクセス検出）
 
 **インポートするモジュール**
 ```python
@@ -243,7 +399,7 @@ import json
 - 信頼ポリシーの Principal（AWS サービス・アカウント・ユーザー）の確認
 - クロスアカウントアクセスや意図しない信頼関係の検出
 
-### [`iam_admin_policy_entities.py`](iam/iam_admin_policy_entities.py)
+### [`iam_admin_policy_entities.py`](iam/iam_admin_policy_entities.py)　―　管理者ポリシーのアタッチ先確認（過剰権限の監査）
 
 **インポートするモジュール**
 ```python
@@ -255,7 +411,7 @@ import boto3
 - ユーザー・グループ・ロールへのポリシーアタッチ状況の一括確認
 - 最小権限原則に基づいた過剰権限の監査
 
-### [`iam_inline_policies.py`](iam/iam_inline_policies.py)
+### [`iam_inline_policies.py`](iam/iam_inline_policies.py)　―　インラインポリシーの一覧確認（管理ポリシー移行対象の洗い出し）
 
 **インポートするモジュール**
 ```python
@@ -268,7 +424,7 @@ import json
 - インラインポリシーの内容（JSON）の読み取りと解析
 - 管理ポリシーへの移行推奨箇所の洗い出し
 
-### [`iam_access_key_last_used.py`](iam/iam_access_key_last_used.py)
+### [`iam_access_key_last_used.py`](iam/iam_access_key_last_used.py)　―　アクセスキー最終使用日時の確認（未使用キーの検出と削除推奨）
 
 **インポートするモジュール**
 ```python
@@ -285,7 +441,7 @@ from datetime import datetime, timezone, timedelta
 
 ## CloudWatch
 
-### [`cloudwatch_alarm_state.py`](cloudwatch/cloudwatch_alarm_state.py)
+### [`cloudwatch_alarm_state.py`](cloudwatch/cloudwatch_alarm_state.py)　―　ALARM状態のアラーム一覧（名前・メトリクス・閾値・SNS通知先の確認）
 
 **インポートするモジュール**
 ```python
@@ -297,7 +453,7 @@ import boto3
 - アラーム名・メトリクス・閾値・SNS トピックの情報整形出力
 - ALARM 状態にあるアラームの抽出と通知
 
-### [`cloudwatch_get_metrics.py`](cloudwatch/cloudwatch_get_metrics.py)
+### [`cloudwatch_get_metrics.py`](cloudwatch/cloudwatch_get_metrics.py)　―　メトリクス統計値の取得（CPU使用率・ネットワーク転送量など）
 
 **インポートするモジュール**
 ```python
@@ -310,7 +466,7 @@ from datetime import datetime, timezone, timedelta
 - 期間・集計統計（Average / Sum / Maximum）の指定方法
 - EC2 CPU 使用率・ネットワーク転送量などの実用メトリクス取得例
 
-### [`cloudwatch_put_metrics.py`](cloudwatch/cloudwatch_put_metrics.py)
+### [`cloudwatch_put_metrics.py`](cloudwatch/cloudwatch_put_metrics.py)　―　カスタムメトリクスの送信（業務指標をCloudWatchに記録）
 
 **インポートするモジュール**
 ```python
@@ -324,7 +480,7 @@ from datetime import datetime, timezone
 - 名前空間・メトリクス名・ディメンション・単位の設定方法
 - アプリケーションの業務指標（処理件数、エラー率など）を CloudWatch に記録するパターン
 
-### [`cloudwatch_put_alarm.py`](cloudwatch/cloudwatch_put_alarm.py)
+### [`cloudwatch_put_alarm.py`](cloudwatch/cloudwatch_put_alarm.py)　―　アラームの作成・更新（閾値・評価期間・SNS通知の設定）
 
 **インポートするモジュール**
 ```python
@@ -336,7 +492,7 @@ import boto3
 - 閾値・評価期間・比較演算子・アクション（SNS 通知）の設定
 - EC2 インスタンスや Lambda の監視アラーム自動作成スクリプト
 
-### [`cloudwatch_dashboard.py`](cloudwatch/cloudwatch_dashboard.py)
+### [`cloudwatch_dashboard.py`](cloudwatch/cloudwatch_dashboard.py)　―　ダッシュボードのJSON取得・更新（複数サービスの監視画面自動生成）
 
 **インポートするモジュール**
 ```python
@@ -353,7 +509,7 @@ import json
 
 ## CloudWatch Logs
 
-### [`logs_list_log_groups.py`](cloudwatch-logs/logs_list_log_groups.py)
+### [`logs_list_log_groups.py`](cloudwatch-logs/logs_list_log_groups.py)　―　ロググループ一覧取得（保持期間未設定グループの検出）
 
 **インポートするモジュール**
 ```python
@@ -365,7 +521,7 @@ import boto3
 - ロググループ名・保持期間・サイズの確認
 - 保持期間未設定（無期限）のロググループの検出とコスト管理
 
-### [`logs_filter_error.py`](cloudwatch-logs/logs_filter_error.py)
+### [`logs_filter_error.py`](cloudwatch-logs/logs_filter_error.py)　―　エラーログのフィルタ取得（キーワード・時間範囲指定）
 
 **インポートするモジュール**
 ```python
@@ -378,7 +534,7 @@ from datetime import datetime, timezone, timedelta
 - キーワード（ERROR / Exception など）を使ったエラーログの抽出
 - 時間範囲指定による特定期間のログ絞り込みと出力
 
-### [`logs_insights_query.py`](cloudwatch-logs/logs_insights_query.py)
+### [`logs_insights_query.py`](cloudwatch-logs/logs_insights_query.py)　―　Logs Insightsクエリ実行（エラー集計・レスポンスタイム分析）
 
 **インポートするモジュール**
 ```python
@@ -392,7 +548,7 @@ from datetime import datetime, timezone, timedelta
 - エラー集計・レスポンスタイム分析などの実用クエリ例
 - クエリ完了待機（ポーリング）と結果の整形出力
 
-### [`logs_retention_policy.py`](cloudwatch-logs/logs_retention_policy.py)
+### [`logs_retention_policy.py`](cloudwatch-logs/logs_retention_policy.py)　―　保持期間の一括設定（コンプライアンス要件への対応）
 
 **インポートするモジュール**
 ```python
@@ -404,7 +560,7 @@ import boto3
 - 全ロググループへの保持期間一括適用スクリプト
 - コンプライアンス要件に応じた保持期間（30 日・90 日・1 年など）の管理
 
-### [`logs_describe_streams.py`](cloudwatch-logs/logs_describe_streams.py)
+### [`logs_describe_streams.py`](cloudwatch-logs/logs_describe_streams.py)　―　ログストリームの一覧取得（古いストリームの検出と整理）
 
 **インポートするモジュール**
 ```python
@@ -421,7 +577,7 @@ from datetime import datetime, timezone
 
 ## Lambda
 
-### [`lambda_list_functions.py`](lambda/lambda_list_functions.py)
+### [`lambda_list_functions.py`](lambda/lambda_list_functions.py)　―　関数一覧とランタイム確認（EOLランタイムの検出）
 
 **インポートするモジュール**
 ```python
@@ -433,7 +589,7 @@ import boto3
 - 関数名・ランタイム・メモリサイズ・タイムアウト・最終更新日の整形出力
 - 古いランタイム（EOL）が設定された関数の検出
 
-### [`lambda_update_configuration.py`](lambda/lambda_update_configuration.py)
+### [`lambda_update_configuration.py`](lambda/lambda_update_configuration.py)　―　関数の設定・環境変数更新（複数関数への一括適用）
 
 **インポートするモジュール**
 ```python
@@ -446,20 +602,7 @@ import time
 - メモリサイズ・タイムアウト・環境変数・レイヤーの変更
 - 複数関数へ設定を一括適用するバッチ更新スクリプト
 
-### [`lambda_invoke.py`](lambda/lambda_invoke.py)
-
-**インポートするモジュール**
-```python
-import boto3
-import json
-```
-
-
-- Lambda 関数の同期（`RequestResponse`）・非同期（`Event`）呼び出し
-- ペイロードの渡し方とレスポンスの解析（FunctionError の検出）
-- Dry Run による実行可能性の確認と実行結果のログ出力
-
-### [`lambda_concurrency.py`](lambda/lambda_concurrency.py)
+### [`lambda_concurrency.py`](lambda/lambda_concurrency.py)　―　同時実行数の確認（予約済み・プロビジョニング済み同時実行数の設定）
 
 **インポートするモジュール**
 ```python
@@ -472,7 +615,20 @@ from datetime import datetime, timezone, timedelta
 - プロビジョニング済み同時実行数（`put_provisioned_concurrency_config`）の設定
 - アカウントレベルの同時実行数上限と関数ごとの使用状況の確認
 
-### [`lambda_aliases_versions.py`](lambda/lambda_aliases_versions.py)
+### [`lambda_invoke.py`](lambda/lambda_invoke.py)　―　関数の手動実行（同期・非同期・DryRunとFunctionError検出）
+
+**インポートするモジュール**
+```python
+import boto3
+import json
+```
+
+
+- Lambda 関数の同期（`RequestResponse`）・非同期（`Event`）呼び出し
+- ペイロードの渡し方とレスポンスの解析（FunctionError の検出）
+- Dry Run による実行可能性の確認と実行結果のログ出力
+
+### [`lambda_aliases_versions.py`](lambda/lambda_aliases_versions.py)　―　エイリアスとバージョン管理（カナリアデプロイのルーティング設定）
 
 **インポートするモジュール**
 ```python
@@ -488,7 +644,7 @@ import boto3
 
 ## ECS
 
-### [`ecs_list_clusters_services.py`](ecs/ecs_list_clusters_services.py)
+### [`ecs_list_clusters_services.py`](ecs/ecs_list_clusters_services.py)　―　クラスター・サービス一覧取得（稼働中・希望タスク数の確認）
 
 **インポートするモジュール**
 ```python
@@ -500,7 +656,7 @@ import boto3
 - クラスター・サービスの ARN から詳細情報（`describe_clusters` / `describe_services`）の取得
 - 稼働中タスク数・希望タスク数・サービスステータスの確認
 
-### [`ecs_service_task_count.py`](ecs/ecs_service_task_count.py)
+### [`ecs_service_task_count.py`](ecs/ecs_service_task_count.py)　―　サービスのdesired/runningカウント確認（不一致・デプロイ失敗の検出）
 
 **インポートするモジュール**
 ```python
@@ -512,7 +668,7 @@ import boto3
 - サービスのスケールアウト／スケールイン（`update_service`）の実装
 - タスク数の不一致（デプロイ失敗・スタック状態）の検出
 
-### [`ecs_rolling_restart.py`](ecs/ecs_rolling_restart.py)
+### [`ecs_rolling_restart.py`](ecs/ecs_rolling_restart.py)　―　サービスのローリング再起動（forceNewDeployment＋ウェイター）
 
 **インポートするモジュール**
 ```python
@@ -524,7 +680,7 @@ import boto3
 - デプロイ完了までのウェイト処理（`services_stable`）の実装
 - 環境変数の変更なしにコンテナを再起動する運用オペレーション
 
-### [`ecs_list_tasks.py`](ecs/ecs_list_tasks.py)
+### [`ecs_list_tasks.py`](ecs/ecs_list_tasks.py)　―　タスク一覧と詳細確認（タスク定義・起動タイプ・プライベートIPの確認）
 
 **インポートするモジュール**
 ```python
@@ -536,7 +692,7 @@ import boto3
 - タスク ID・タスク定義・起動タイプ・プライベート IP の確認
 - 特定サービスやコンテナインスタンス上のタスク絞り込み
 
-### [`ecs_task_definition.py`](ecs/ecs_task_definition.py)
+### [`ecs_task_definition.py`](ecs/ecs_task_definition.py)　―　タスク定義の最新リビジョン取得（コンテナ定義の読み取りと新規登録）
 
 **インポートするモジュール**
 ```python
@@ -553,7 +709,7 @@ import json
 
 ## SSM
 
-### [`ssm_send_command.py`](ssm/ssm_send_command.py)
+### [`ssm_send_command.py`](ssm/ssm_send_command.py)　―　リモートコマンド実行（複数インスタンスへの一括実行とタグ指定）
 
 **インポートするモジュール**
 ```python
@@ -566,7 +722,7 @@ import time
 - コマンド実行結果の取得（`get_command_invocation`）と成否判定
 - 複数インスタンスへの一括コマンド実行とタグベースのターゲット指定
 
-### [`ssm_parameter_store.py`](ssm/ssm_parameter_store.py)
+### [`ssm_parameter_store.py`](ssm/ssm_parameter_store.py)　―　Parameter Storeの一括読み書き（SecureString復号・パス階層の一括取得）
 
 **インポートするモジュール**
 ```python
@@ -578,7 +734,7 @@ import boto3
 - SecureString（KMS 暗号化）パラメータの取得と復号（`WithDecryption=True`）
 - パスプレフィックスを使った階層構造パラメータの一括取得（`get_parameters_by_path`）
 
-### [`ssm_patch_compliance.py`](ssm/ssm_patch_compliance.py)
+### [`ssm_patch_compliance.py`](ssm/ssm_patch_compliance.py)　―　パッチコンプライアンス確認（未適用パッチが存在するインスタンスの検出）
 
 **インポートするモジュール**
 ```python
@@ -594,7 +750,7 @@ import boto3
 
 ## RDS
 
-### [`rds_describe_instances.py`](rds/rds_describe_instances.py)
+### [`rds_describe_instances.py`](rds/rds_describe_instances.py)　―　DBインスタンス一覧と状態確認（エンジンバージョン・マルチAZ設定の確認）
 
 **インポートするモジュール**
 ```python
@@ -606,7 +762,7 @@ import boto3
 - インスタンス ID・エンドポイント・ステータス・エンジンバージョン・マルチ AZ 設定の確認
 - メンテナンスウィンドウ・バックアップウィンドウの設定状況の確認
 
-### [`rds_snapshot.py`](rds/rds_snapshot.py)
+### [`rds_snapshot.py`](rds/rds_snapshot.py)　―　スナップショット作成と世代管理（古いスナップショットの検出と削除）
 
 **インポートするモジュール**
 ```python
@@ -623,7 +779,7 @@ from datetime import datetime, timezone, timedelta
 
 ## SQS
 
-### [`sqs_queue_attributes.py`](sqs/sqs_queue_attributes.py)
+### [`sqs_queue_attributes.py`](sqs/sqs_queue_attributes.py)　―　キューの属性取得（滞留メッセージ数・DLQ設定の確認）
 
 **インポートするモジュール**
 ```python
@@ -635,7 +791,7 @@ import boto3
 - メッセージ数（ApproximateNumberOfMessages）・可視性タイムアウト・保持期間の確認
 - DLQ（Dead Letter Queue）の設定状況と RedrivePolicy の確認
 
-### [`sqs_dlq_reprocess.py`](sqs/sqs_dlq_reprocess.py)
+### [`sqs_dlq_reprocess.py`](sqs/sqs_dlq_reprocess.py)　―　DLQメッセージの再処理（元キューへの再送信と削除）
 
 **インポートするモジュール**
 ```python
@@ -652,7 +808,7 @@ import json
 
 ## SNS
 
-### [`sns_publish.py`](sns/sns_publish.py)
+### [`sns_publish.py`](sns/sns_publish.py)　―　トピックへのメッセージ発行（属性フィルタリング・FIFOトピック対応）
 
 **インポートするモジュール**
 ```python
@@ -670,7 +826,7 @@ from datetime import datetime, timezone
 
 ## VPC
 
-### [`vpc_describe_network.py`](vpc/vpc_describe_network.py)
+### [`vpc_describe_network.py`](vpc/vpc_describe_network.py)　―　VPC・サブネット・ルートテーブル確認（パブリック・プライベート判定）
 
 **インポートするモジュール**
 ```python
@@ -686,7 +842,7 @@ import boto3
 
 ## Secrets Manager
 
-### [`secretsmanager_get_put.py`](secrets-manager/secretsmanager_get_put.py)
+### [`secretsmanager_get_put.py`](secrets-manager/secretsmanager_get_put.py)　―　シークレットの取得と更新（DBパスワード等のJSON形式シークレット管理）
 
 **インポートするモジュール**
 ```python
@@ -704,7 +860,7 @@ from datetime import datetime, timezone
 
 ## SES
 
-### [`ses_list_identities.py`](ses/ses_list_identities.py)
+### [`ses_list_identities.py`](ses/ses_list_identities.py)　―　送信ドメインのID一覧取得（未検証アイデンティティの検出）
 
 **インポートするモジュール**
 ```python
@@ -716,7 +872,7 @@ import boto3
 - 各アイデンティティの検証ステータス（`get_identity_verification_attributes`）の確認
 - 未検証アイデンティティの検出と検証メール再送信（`verify_email_identity`）
 
-### [`ses_dkim_spf_status.py`](ses/ses_dkim_spf_status.py)
+### [`ses_dkim_spf_status.py`](ses/ses_dkim_spf_status.py)　―　DKIM・SPF検証ステータス確認（メール到達性向上のための認証設定確認）
 
 **インポートするモジュール**
 ```python
@@ -728,7 +884,7 @@ import boto3
 - SPF・DMARC の設定確認（`get_identity_mail_from_domain_attributes`）
 - メール到達性向上のための認証設定状況レポート出力
 
-### [`ses_send_email.py`](ses/ses_send_email.py)
+### [`ses_send_email.py`](ses/ses_send_email.py)　―　メール送信（テキスト・HTML両対応、設定セットによるイベント追跡）
 
 **インポートするモジュール**
 ```python
@@ -741,7 +897,7 @@ from botocore.exceptions import ClientError
 - テキスト／HTML のマルチパートメール・宛先（To / CC / BCC）・返信先（ReplyToAddresses）の設定
 - 設定セット（ConfigurationSet）を使った送信イベント追跡の有効化
 
-### [`ses_send_statistics.py`](ses/ses_send_statistics.py)
+### [`ses_send_statistics.py`](ses/ses_send_statistics.py)　―　送信統計・バウンス率の確認（アカウント送信制限リスクの監視）
 
 **インポートするモジュール**
 ```python
@@ -754,7 +910,7 @@ from datetime import datetime, timezone
 - 送信数・バウンス数・苦情数・拒否数のデータポイント集計
 - バウンス率・苦情率の算出とアカウント送信制限リスクの監視
 
-### [`ses_suppression_list.py`](ses/ses_suppression_list.py)
+### [`ses_suppression_list.py`](ses/ses_suppression_list.py)　―　サプレッションリストの管理（BOUNCE・COMPLAINT別確認と解除）
 
 **インポートするモジュール**
 ```python

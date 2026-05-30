@@ -69,7 +69,7 @@ async def get_memo_by_id(
     """
     print("=== １件取得：開始 ===")
     result = await db_session.execute(
-        select(memo_model.Memo).where(memo_model.Memo.memo_id == memo_id)
+        select(memo_model.Memo).where(memo_model.Memo.id == memo_id)
     )
     memo = result.scalars().first()
     print(">>> データ取得完了")
