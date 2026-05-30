@@ -33,7 +33,7 @@ async def get_items_paged(
 
 # ユーザーに紐づく作成
 async def create_user_item(db: AsyncSession, item_in: ItemCreate, user_id: int) -> Item:
-    item = Item(**item_in.model_dump(), user_id=user_id)
+    item = Item(**item_in.model_dump(exclude={"user_id"}), user_id=user_id)
     db.add(item)
     await db.commit()
     await db.refresh(item)

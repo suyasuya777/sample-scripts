@@ -12,12 +12,10 @@ project_structure/
 ├── schemas.py         # Pydanticスキーマ
 │
 ├── routers/           # エンドポイント定義
-│   ├── __init__.py
 │   ├── auth.py        # /auth エンドポイント
 │   └── item.py        # /items エンドポイント
 │
 ├── cruds/             # DB操作ロジック
-│   ├── __init__.py
 │   ├── auth.py        # 認証・ユーザーのDB操作
 │   └── item.py        # items テーブルのDB操作
 │
@@ -30,6 +28,33 @@ project_structure/
     ├── conftest.py    # フィクスチャ定義
     ├── test_example.py
     └── test_item.py   # items エンドポイントのテスト
+```
+
+---
+
+## 🚀 セットアップ
+
+```bash
+
+# Ptyon 3.11にする
+conda activate py311
+
+# 仮想環境を作成
+python -m venv .venv
+
+# アクティブ化
+source .venv/bin/activate   # Mac/Linux
+.venv\Scripts\activate      # Windows
+
+# 依存関係をインストール
+pip install -r requirements.txt
+```
+
+各サンプルは単体で `uvicorn ファイル名:app --reload` で起動できます。
+
+```bash
+# ブラウザを起動
+http://localhost:8000/docs
 ```
 
 ---

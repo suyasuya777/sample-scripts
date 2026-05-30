@@ -5,61 +5,20 @@ FastAPI と SQLAlchemy（非同期）を使ったメモ管理 REST API のサン
 
 ---
 
-## 🚀 環境構築
-
-### 仮想環境の作成と有効化
+## 🚀 セットアップ
 
 ```bash
-# 仮想環境の構築
-conda create -n fastapi_env python=3.12
 
-# 仮想環境の有効化
-conda activate fastapi_env
+# Ptyon 3.11にする
+conda activate py311
+
+# 仮想環境を作成
+python -m venv .venv
+
+# アクティブ化
+source .venv/bin/activate   # Mac/Linux
+.venv\Scripts\activate      # Windows
 ```
-
-### パッケージのインストール
-
-```bash
-# FastAPI
-pip install fastapi
-
-# Uvicorn（ASGIサーバー）
-pip install uvicorn
-
-# requests（HTTPクライアント）
-pip install requests
-
-# httpx（非同期処理）
-pip install httpx
-
-# SQLAlchemy（ORM）
-pip install sqlalchemy
-
-# aiosqlite（非同期SQLite）
-pip install aiosqlite
-```
-
-> **一括インストール方法**  
-> プロジェクトで使用するパッケージをリスト化した `requirements.txt` を使うと、
-> 一度にすべての必要なパッケージをインストールできます。
->
-> ```bash
-> pip install -r requirements.txt
-> ```
->
-> `-r` オプションを使用することで、指定したファイルに記載されているパッケージを
-> 一括でインストールするように指示します。
->
-> **`requirements.txt` の生成方法**  
-> すでにある開発環境から `requirements.txt` を生成する場合は、次のコマンドを使用します。
->
-> ```bash
-> pip freeze > requirements.txt
-> ```
->
-> `pip freeze` は、現在の Python 環境にインストールされているすべてのパッケージと
-> そのバージョンを一覧表示するコマンドです。
-> これにより、他の環境でも同じセットアップが可能になります。
 
 ### データベースの初期化
 
