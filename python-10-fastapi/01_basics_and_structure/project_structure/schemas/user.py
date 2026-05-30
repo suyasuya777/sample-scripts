@@ -19,6 +19,15 @@ class UserCreate(UserBase):
     pass
 
 
+class UserUpdate(BaseModel):
+    name: Annotated[
+        str | None, Field(None, min_length=1, max_length=50, description="ユーザー名（1〜50文字）")
+    ] = None
+    email: Annotated[
+        EmailStr | None, Field(None, description="メールアドレス（形式バリデーションあり）")
+    ] = None
+
+
 class UserResponse(UserBase):
     id: int
     items: Annotated[

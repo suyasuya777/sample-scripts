@@ -1,4 +1,5 @@
 from typing import Annotated
+
 from pydantic import BaseModel, Field
 
 TitleStr = Annotated[
@@ -20,6 +21,16 @@ class ItemBase(BaseModel):
 
 class ItemCreate(ItemBase):
     pass
+
+
+class ItemUpdate(BaseModel):
+    title: Annotated[
+        str | None, Field(None, min_length=1, max_length=100, description="タイトル")
+    ] = None
+    description: DescriptionStr = None
+    user_id: Annotated[
+        int | None, Field(None, gt=0, description="所有ユーザーID（1以上の整数）")
+    ] = None
 
 
 class ItemResponse(ItemBase):
