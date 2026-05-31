@@ -6,7 +6,7 @@
 
 ---
 
-## ディレクトリ構成
+## 📁 ディレクトリ・ファイル構成
 
 ```
 ranking_project/
@@ -26,6 +26,21 @@ ranking_project/
         ├── which_restaurant.txt     # 好きなレストランを聞くメッセージ
         └── good_by.txt              # 別れのメッセージ
 ```
+
+## 📋 ファイル一覧
+
+| ディレクトリ | ファイル名 | 説明 |
+|---|---|---|
+| ranking_project/ | [main.py](#mainpy--エントリーポイント) | エントリーポイント |
+| | [ranking.csv](#rankingcsv--ランキングデータ永続化データ構造) | ランキングデータ（永続化） |
+| roboter/controller/ | [conversation.py](#controllerconversationpy--会話フロー制御) | 会話フロー制御 |
+| roboter/models/ | [robot.py](#modelsrobotpy--restaurantrobot-クラス) | ロボットの振る舞い（メインロジック） |
+| | [ranking.py](#modelsrankingpy--rankingmodel-クラス) | ランキングデータ操作 |
+| roboter/views/ | [console.py](#viewsconsolepy--テンプレート読み込み表示担当) | テンプレート読み込み（表示担当） |
+| roboter/templates/ | [hello.txt](#テンプレートと変数) | 名前を聞くメッセージ |
+| | [greeting.txt](#テンプレートと変数) | レストランをすすめるメッセージ |
+| | [which_restaurant.txt](#テンプレートと変数) | 好きなレストランを聞くメッセージ |
+| | [good_by.txt](#テンプレートと変数) | 別れのメッセージ |
 
 ---
 
@@ -76,9 +91,9 @@ END
 
 ---
 
-## クラス・関数の詳細
+## 📄 Python ソース詳細
 
-### `main.py`
+### `main.py` ─ エントリーポイント
 
 **インポートするモジュール**
 ```python
@@ -92,7 +107,7 @@ from roboter.controller import conversation
 
 ---
 
-### `controller/conversation.py`
+### `controller/conversation.py` ─ 会話フロー制御
 
 **インポートするモジュール**
 ```python
@@ -145,7 +160,7 @@ import os           # os.path.abspath, os.path.join による CSV パス解決
 
 ---
 
-### `views/console.py`
+### `views/console.py` ─ テンプレート読み込み（表示担当）
 
 **インポートするモジュール**
 ```python
@@ -160,7 +175,7 @@ import string  # string.Template によるプレースホルダー置換
 
 ---
 
-### `ranking.csv` ─ データ構造
+### `ranking.csv` ─ ランキングデータ（永続化）・データ構造
 
 | カラム | 内容 |
 |--------|------|
@@ -181,10 +196,10 @@ blue,1
 
 | ファイル | 変数 | 用途 |
 |----------|------|------|
-| `hello.txt` | `$robot_name` | ロボットの自己紹介＋名前入力プロンプト |
-| `greeting.txt` | `$restaurant` | レストランのおすすめ文 |
-| `which_restaurant.txt` | `$user_name` | お気に入りレストランを聞く文 |
-| `good_by.txt` | `$robot_name`, `$user_name` | お礼・別れのメッセージ |
+| [`hello.txt`](roboter/templates/hello.txt) | `$robot_name` | ロボットの自己紹介＋名前入力プロンプト |
+| [`greeting.txt`](roboter/templates/greeting.txt) | `$restaurant` | レストランのおすすめ文 |
+| [`which_restaurant.txt`](roboter/templates/which_restaurant.txt) | `$user_name` | お気に入りレストランを聞く文 |
+| [`good_by.txt`](roboter/templates/good_by.txt) | `$robot_name`, `$user_name` | お礼・別れのメッセージ |
 
 テンプレートは `string.Template` の `substitute()` で変数を埋め込む方式。
 
