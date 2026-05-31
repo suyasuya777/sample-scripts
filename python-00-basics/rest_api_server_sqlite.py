@@ -1,8 +1,8 @@
 """
-rest_api_server.py - サーバ側のREST API処理（Flask）
+rest_api_server_sqlite.py - サーバ側のREST API処理（Flask）
 
 起動方法:
-    python rest_api_server.py
+    python rest_api_server_sqlite.py
 
 動作確認:
     curl http://localhost:5000/items
