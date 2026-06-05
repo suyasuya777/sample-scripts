@@ -1,6 +1,6 @@
 import os
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
 
 # ==================================================
@@ -25,6 +25,6 @@ async_session = async_sessionmaker(
 
 
 # DBとのセッションを非同期的に扱うことができる関数
-async def get_dbsession():
+async def get_db():
     async with async_session() as session:
         yield session

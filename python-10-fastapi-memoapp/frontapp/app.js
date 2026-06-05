@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const description = document.getElementById('description').value;
         // ▽▽▽ 追加 ▽▽▽
         const priority = document.getElementById('priority').value;
-        const due_date = document.getElementById('due_date').value;
+        const due_date = document.getElementById('due_date').value || null;
         const is_completed = document.getElementById('is_completed').checked;
         // メモオブジェクトを作成
         const memo = { title, description, status: { priority, due_date, is_completed } };
@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const description = document.getElementById('description').value;
         // ▽▽▽ 追加 ▽▽▽
         const priority = document.getElementById('priority').value;
-        const due_date = document.getElementById('due_date').value;
+        const due_date = document.getElementById('due_date').value || null;
         const is_completed = document.getElementById('is_completed').checked;
         await updateMemo({ title, description, status: { priority, due_date, is_completed } });
         // △△△ 追加 △△△

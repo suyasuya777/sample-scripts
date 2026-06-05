@@ -14,18 +14,18 @@ class Memo(Base):
     # メモID：PK：自動インクリメント
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     # タイトル：未入力不可
-    title: Mapped[str] = mapped_column(String(50), nullable=False)
+    title: Mapped[str] = mapped_column(String(50))
     # 詳細：未入力可
-    description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    description: Mapped[str | None] = mapped_column(String(255))
     # 作成日時
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     # 更新日時
-    updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime)
     # ▽▽▽ MemoStatusSchemaのフィールド ▽▽▽
     # 優先度
-    priority: Mapped[str] = mapped_column(String(10), nullable=False)
+    priority: Mapped[str] = mapped_column(String(10))
     # 期限日
-    due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    due_date: Mapped[datetime | None] = mapped_column(DateTime)
     # 完了フラグ
-    is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_completed: Mapped[bool] = mapped_column(Boolean)
     # △△△ MemoStatusSchemaのフィールド △△△

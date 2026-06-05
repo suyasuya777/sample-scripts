@@ -13,7 +13,7 @@ router = APIRouter(tags=["Memos"], prefix="/memos")
 # メモ新規登録のエンドポイント
 @router.post("/", response_model=ResponseSchema)
 async def create_memo(memo: InsertAndUpdateMemoSchema,
-                    db: AsyncSession = Depends(db.get_dbsession)):
+                    db: AsyncSession = Depends(db.get_db)):
     try:
         # 新しいメモをデータベースに登録
         await memo_crud.insert_memo(db, memo)
@@ -24,7 +24,7 @@ async def create_memo(memo: InsertAndUpdateMemoSchema,
 
 # メモ情報全件取得のエンドポイント
 @router.get("/", response_model=list[MemoSchema])
-async def get_memos_list(db: AsyncSession = Depends(db.get_dbsession)):
+async def get_memos_list(db: AsyncSession = Depends(db.get_db)):
     # 全てのメモをデータベースから取得
     memos = await memo_crud.get_memos(db)
     # SQLAlchemyのメモオブジェクトをPydanticモデルに変換
@@ -38,7 +38,7 @@ async def get_memos_list(db: AsyncSession = Depends(db.get_dbsession)):
         )
         # MemoSchema を作成
         memo_pydantic = MemoSchema(
-            memo_id=memo.memo_id,
+            memo_id=memo.id,
             title=memo.title,
             description=memo.description,
             status=status
@@ -49,7 +49,7 @@ async def get_memos_list(db: AsyncSession = Depends(db.get_dbsession)):
 # 特定のメモ情報取得のエンドポイント
 @router.get("/{memo_id}", response_model=MemoSchema)
 async def get_memo_detail(memo_id: int,
-                    db: AsyncSession = Depends(db.get_dbsession)):
+                    db: AsyncSession = Depends(db.get_db)):
     # 指定されたIDのメモをデータベースから取得
     memo = await memo_crud.get_memo_by_id(db, memo_id)
     if not memo:
@@ -64,7 +64,7 @@ async def get_memo_detail(memo_id: int,
     )
     # MemoSchema を作成
     memo_pydantic = MemoSchema(
-        memo_id=memo.memo_id,
+        memo_id=memo.id,
         title=memo.title,
         description=memo.description,
         status=status
@@ -74,7 +74,7 @@ async def get_memo_detail(memo_id: int,
 # 特定のメモを更新するエンドポイント
 @router.put("/{memo_id}", response_model=ResponseSchema)
 async def modify_memo(memo_id: int, memo: InsertAndUpdateMemoSchema,
-                    db: AsyncSession = Depends(db.get_dbsession)):
+                    db: AsyncSession = Depends(db.get_db)):
     # 指定されたIDのメモを新しいデータで更新
     updated_memo = await memo_crud.update_memo(db, memo_id, memo)
     if not updated_memo:
@@ -85,7 +85,7 @@ async def modify_memo(memo_id: int, memo: InsertAndUpdateMemoSchema,
 # 特定のメモを削除するエンドポイント
 @router.delete("/{memo_id}", response_model=ResponseSchema)
 async def remove_memo(memo_id: int,
-                    db: AsyncSession = Depends(db.get_dbsession)):
+                    db: AsyncSession = Depends(db.get_db)):
     # 指定されたIDのメモをデータベースから削除
     result = await memo_crud.delete_memo(db, memo_id)
     if not result:
