@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from schemas.memo import InsertAndUpdateMemoSchema, MemoSchema, ResponseSchema, MemoStatusSchema
 import cruds.memo as memo_crud
 import db
+from fastapi import APIRouter, Depends, HTTPException
+from schemas.memo import (CreateAndUpdateMemoSchema, MemoSchema,
+                          MemoStatusSchema, ResponseSchema)
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # ルーターを作成し、タグとURLパスのプレフィックスを設定
 router = APIRouter(tags=["Memos"], prefix="/memos")
@@ -12,11 +13,10 @@ router = APIRouter(tags=["Memos"], prefix="/memos")
 # ==================================================
 # メモ新規登録のエンドポイント
 @router.post("/", response_model=ResponseSchema)
-async def create_memo(memo: InsertAndUpdateMemoSchema,
-                    db: AsyncSession = Depends(db.get_db)):
+async def create_memo(memo: CreateAndUpdateMemoSchema, db: AsyncSession = Depends(db.get_db)):
     try:
         # 新しいメモをデータベースに登録
-        await memo_crud.insert_memo(db, memo)
+        await memo_crud.create_memo(db, memo)
         return ResponseSchema(message="メモが正常に登録されました")
     except Exception as e:
         # 登録に失敗した場合、HTTP 400エラーを返す
@@ -24,7 +24,7 @@ async def create_memo(memo: InsertAndUpdateMemoSchema,
 
 # メモ情報全件取得のエンドポイント
 @router.get("/", response_model=list[MemoSchema])
-async def get_memos_list(db: AsyncSession = Depends(db.get_db)):
+async def get_memos(db: AsyncSession = Depends(db.get_db)):
     # 全てのメモをデータベースから取得
     memos = await memo_crud.get_memos(db)
     # SQLAlchemyのメモオブジェクトをPydanticモデルに変換
@@ -38,7 +38,7 @@ async def get_memos_list(db: AsyncSession = Depends(db.get_db)):
         )
         # MemoSchema を作成
         memo_pydantic = MemoSchema(
-            memo_id=memo.id,
+            memo_id=memo.memo_id,
             title=memo.title,
             description=memo.description,
             status=status
@@ -48,7 +48,7 @@ async def get_memos_list(db: AsyncSession = Depends(db.get_db)):
 
 # 特定のメモ情報取得のエンドポイント
 @router.get("/{memo_id}", response_model=MemoSchema)
-async def get_memo_detail(memo_id: int,
+async def get_memo_by_id(memo_id: int,
                     db: AsyncSession = Depends(db.get_db)):
     # 指定されたIDのメモをデータベースから取得
     memo = await memo_crud.get_memo_by_id(db, memo_id)
@@ -64,7 +64,7 @@ async def get_memo_detail(memo_id: int,
     )
     # MemoSchema を作成
     memo_pydantic = MemoSchema(
-        memo_id=memo.id,
+        memo_id=memo.memo_id,
         title=memo.title,
         description=memo.description,
         status=status
@@ -73,7 +73,7 @@ async def get_memo_detail(memo_id: int,
 
 # 特定のメモを更新するエンドポイント
 @router.put("/{memo_id}", response_model=ResponseSchema)
-async def modify_memo(memo_id: int, memo: InsertAndUpdateMemoSchema,
+async def update_memo(memo_id: int, memo: CreateAndUpdateMemoSchema,
                     db: AsyncSession = Depends(db.get_db)):
     # 指定されたIDのメモを新しいデータで更新
     updated_memo = await memo_crud.update_memo(db, memo_id, memo)
@@ -84,7 +84,7 @@ async def modify_memo(memo_id: int, memo: InsertAndUpdateMemoSchema,
 
 # 特定のメモを削除するエンドポイント
 @router.delete("/{memo_id}", response_model=ResponseSchema)
-async def remove_memo(memo_id: int,
+async def delete_memo(memo_id: int,
                     db: AsyncSession = Depends(db.get_db)):
     # 指定されたIDのメモをデータベースから削除
     result = await memo_crud.delete_memo(db, memo_id)

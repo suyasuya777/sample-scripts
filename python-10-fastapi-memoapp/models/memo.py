@@ -12,7 +12,7 @@ class Memo(Base):
     # テーブル名
     __tablename__ = "memos"
     # メモID：PK：自動インクリメント
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    memo_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     # タイトル：未入力不可
     title: Mapped[str] = mapped_column(String(50))
     # 詳細：未入力可

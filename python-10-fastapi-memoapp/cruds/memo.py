@@ -9,14 +9,14 @@ from datetime import datetime
 # 非同期CRUD処理
 # ==================================================
 # 新規登録
-async def insert_memo(
-    db_session: AsyncSession, memo_data: memo_schema.InsertAndUpdateMemoSchema
+async def create_memo(
+    db_session: AsyncSession, memo_data: memo_schema.CreateAndUpdateMemoSchema
 ) -> memo_model.Memo:
     """
     新しいメモをデータベースに登録する関数
     Args:
     db_session (AsyncSession): 非同期DBセッション
-    memo_data (InsertAndUpdateMemoSchema): 作成するメモのデータ
+    memo_data (CreateAndUpdateMemoSchema): 作成するメモのデータ
     Returns:
     Memo: 作成されたメモのモデル
     """
@@ -69,7 +69,7 @@ async def get_memo_by_id(
     """
     print("=== １件取得：開始 ===")
     result = await db_session.execute(
-        select(memo_model.Memo).where(memo_model.Memo.id == memo_id)
+        select(memo_model.Memo).where(memo_model.Memo.memo_id == memo_id)
     )
     memo = result.scalars().first()
     print(">>> データ取得完了")
@@ -80,14 +80,14 @@ async def get_memo_by_id(
 async def update_memo(
     db_session: AsyncSession,
     memo_id: int,
-    target_data: memo_schema.InsertAndUpdateMemoSchema,
+    target_data: memo_schema.CreateAndUpdateMemoSchema,
 ) -> memo_model.Memo | None:
     """
     データベースのメモを更新する関数
     Args:
         db_session (AsyncSession): 非同期DBセッション
         memo_id (int): 更新するメモのID（プライマリキー）
-        target_data (InsertAndUpdateMemoSchema): 更新するデータ
+        target_data (CreateAndUpdateMemoSchema): 更新するデータ
     Returns:
         Memo | None: 更新されたメモのモデル、メモが存在しない場合はNoneを返す
     """

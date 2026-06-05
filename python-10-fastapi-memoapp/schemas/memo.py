@@ -25,6 +25,7 @@ MemoTitle = Annotated[
         examples=["明日のアジェンダ"],
     ),
 ]
+
 MemoDesc = Annotated[
     str,
     Field(
@@ -56,13 +57,13 @@ class MemoStatusSchema(BaseModel):
     is_completed: IsCompleted = False
 
 
-class InsertAndUpdateMemoSchema(BaseModel):
+class CreateAndUpdateMemoSchema(BaseModel):
     title: MemoTitle
-    description: MemoDesc = ""
+    description: MemoDesc = None
     status: Annotated[MemoStatusSchema, Field(description="メモの状態を表す情報")]
 
 
-class MemoSchema(InsertAndUpdateMemoSchema):
+class MemoSchema(CreateAndUpdateMemoSchema):
     memo_id: MemoId
 
 
