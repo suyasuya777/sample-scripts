@@ -20,6 +20,10 @@ AWSの各サービスをboto3で操作する実務向けサンプルプログラ
 - [VPC](#vpc)
 - [Secrets Manager](#secrets-manager)
 - [SES](#ses)
+- [Auto Scaling](#auto-scaling)
+- [Cost Explorer](#cost-explorer)
+- [ELBv2](#elbv2)
+- [EKS](#eks)
 
 ---
 
@@ -72,6 +76,7 @@ AWSの各サービスをboto3で操作する実務向けサンプルプログラ
 |  | [ssm_patch_compliance.py](#ssm_patch_compliance--パッチコンプライアンス確認未適用パッチが存在するインスタンスの検出) | パッチコンプライアンス確認（未適用パッチが存在するインスタンスの検出） |
 | rds/ | [rds_describe_instances.py](#rds_describe_instances--dbインスタンス一覧と状態確認エンジンバージョンマルチaz設定の確認) | DBインスタンス一覧と状態確認（エンジンバージョン・マルチAZ設定の確認） |
 |  | [rds_snapshot.py](#rds_snapshot--スナップショット作成と世代管理古いスナップショットの検出と削除) | スナップショット作成と世代管理（古いスナップショットの検出と削除） |
+|  | [rds_failover_cluster.py](#rds_failover_cluster--aurora-クラスターのフェイルオーバー操作障害訓練計画メンテナンス対応) | Aurora クラスターのフェイルオーバー操作（障害訓練・計画メンテナンス対応） |
 | sqs/ | [sqs_queue_attributes.py](#sqs_queue_attributes--キューの属性取得滞留メッセージ数dlq設定の確認) | キューの属性取得（滞留メッセージ数・DLQ設定の確認） |
 |  | [sqs_dlq_reprocess.py](#sqs_dlq_reprocess--dlqメッセージの再処理元キューへの再送信と削除) | DLQメッセージの再処理（元キューへの再送信と削除） |
 | sns/ | [sns_publish.py](#sns_publish--トピックへのメッセージ発行属性フィルタリングfifoトピック対応) | トピックへのメッセージ発行（属性フィルタリング・FIFOトピック対応） |
@@ -82,6 +87,10 @@ AWSの各サービスをboto3で操作する実務向けサンプルプログラ
 |  | [ses_send_email.py](#ses_send_email--メール送信テキストhtml両対応設定セットによるイベント追跡) | メール送信（テキスト・HTML両対応、設定セットによるイベント追跡） |
 |  | [ses_send_statistics.py](#ses_send_statistics--送信統計バウンス率の確認アカウント送信制限リスクの監視) | 送信統計・バウンス率の確認（アカウント送信制限リスクの監視） |
 |  | [ses_suppression_list.py](#ses_suppression_list--サプレッションリストの管理bouncecomplaint別確認と解除) | サプレッションリストの管理（BOUNCE・COMPLAINT別確認と解除） |
+| autoscaling/ | [autoscaling_describe_groups.py](#autoscaling_describe_groups--asgの一覧とdesiredrunning乖離検出スケーリングポリシー確認) | ASGの一覧とDesired/Running乖離検出（スケーリングポリシー確認） |
+| cost-explorer/ | [cost_explorer_service_cost.py](#cost_explorer_service_cost--サービス別コスト取得先月比較と急増サービス検出) | サービス別コスト取得（先月比較と急増サービス検出） |
+| elbv2/ | [elbv2_target_health.py](#elbv2_target_health--albターゲットグループのヘルスチェック確認unhealthy検出) | ALBターゲットグループのヘルスチェック確認（unhealthy検出） |
+| eks/ | [eks_describe_cluster.py](#eks_describe_cluster--eksクラスター情報取得ノードグループ状態確認) | EKSクラスター情報取得・ノードグループ状態確認 |
 
 ---
 
@@ -773,6 +782,21 @@ from datetime import datetime, timezone, timedelta
 - スナップショット一覧取得（`describe_db_snapshots`）と保持期間管理
 - 古いスナップショットの検出と削除（`delete_db_snapshot`）によるコスト管理
 
+### rds_failover_cluster ― Aurora クラスターのフェイルオーバー操作（障害訓練・計画メンテナンス対応）
+
+[`rds_failover_cluster.py`](rds/rds_failover_cluster.py)
+
+**インポートするモジュール**
+```python
+import boto3
+import time
+```
+
+
+- Aurora クラスターのフェイルオーバー実行（`failover_db_cluster`）
+- フェイルオーバー前後のライター／リーダーインスタンス確認
+- クラスターが `available` 状態に戻るまでのポーリング待機と切り替え結果レポート
+
 ---
 
 ## SQS
@@ -940,6 +964,79 @@ from datetime import datetime, timezone
 - SES アカウントレベルのサプレッションリストの取得（`list_suppressed_destinations`）
 - サプレッション登録理由（BOUNCE / COMPLAINT）ごとの件数確認
 - 特定アドレスのサプレッション解除（`delete_suppressed_destination`）の実装
+
+---
+
+## Auto Scaling
+
+### autoscaling_describe_groups ― ASGの一覧とDesired/Running乖離検出（スケーリングポリシー確認）
+
+[`autoscaling_describe_groups.py`](autoscaling/autoscaling_describe_groups.py)
+
+**インポートするモジュール**
+```python
+import boto3
+```
+
+
+- Auto Scaling グループの一覧取得（`describe_auto_scaling_groups`）とインスタンス状態の確認
+- Desired と InService の乖離検出（スケール失敗・起動遅延の把握）
+- スケーリングポリシーの種別確認と起動テンプレート／設定の確認
+
+---
+
+## Cost Explorer
+
+### cost_explorer_service_cost ― サービス別コスト取得（先月比較と急増サービス検出）
+
+[`cost_explorer_service_cost.py`](cost-explorer/cost_explorer_service_cost.py)
+
+**インポートするモジュール**
+```python
+import boto3
+from datetime import datetime, date, timedelta
+```
+
+
+- Cost Explorer によるサービス別コスト取得（`get_cost_and_usage`）
+- 今月と先月のコストを比較し、前月比で急増したサービスを検出
+- 閾値（デフォルト 20%）超過サービスの警告レポート出力
+
+---
+
+## ELBv2
+
+### elbv2_target_health ― ALBターゲットグループのヘルスチェック確認（unhealthy検出）
+
+[`elbv2_target_health.py`](elbv2/elbv2_target_health.py)
+
+**インポートするモジュール**
+```python
+import boto3
+```
+
+
+- ALB ターゲットグループの一覧取得（`describe_target_groups`）とヘルス状態確認（`describe_target_health`）
+- unhealthy ターゲットの検出と理由（Reason / Description）の出力
+- 全ターゲットグループのヘルス状態サマリーと異常グループ一覧出力
+
+---
+
+## EKS
+
+### eks_describe_cluster ― EKSクラスター情報取得・ノードグループ状態確認
+
+[`eks_describe_cluster.py`](eks/eks_describe_cluster.py)
+
+**インポートするモジュール**
+```python
+import boto3
+```
+
+
+- EKS クラスターの一覧取得（`list_clusters`）と詳細確認（`describe_cluster`）
+- Kubernetes バージョン・エンドポイント・ネットワーク設定・ログ設定の確認
+- ノードグループ（`describe_nodegroup`）のスケール設定・ヘルス状態・問題の検出
 
 ---
 
