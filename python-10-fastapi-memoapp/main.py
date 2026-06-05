@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
@@ -27,7 +27,7 @@ app.include_router(memo_router)
 
 # バリデーションエラーのカスタムハンドラ
 @app.exception_handler(ValidationError)
-async def validation_exception_handler(exc: ValidationError):
+async def validation_exception_handler(request: Request, exc: ValidationError):
     # ValidationErrorが発生した場合にクライアントに返すレスポンス定義
     return JSONResponse(
         # ステータスコード422
@@ -38,5 +38,5 @@ async def validation_exception_handler(exc: ValidationError):
         "detail": exc.errors(),
         # バリデーションエラーが発生した時の入力データ
         "body": exc.model
-    }
-)
+        }
+    )

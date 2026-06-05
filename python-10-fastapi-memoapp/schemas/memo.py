@@ -1,20 +1,14 @@
 from typing import Annotated
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 
 # ── 型エイリアス ──────────────────────────────────────────
-Priority = Annotated[str, Field(description="優先度", examples=["高"])]
-DueDate = Annotated[
-    datetime | None,
+MemoId = Annotated[
+    int,
     Field(
-        None,
-        description="メモの期限日、設定されていない場合はNone",
-        examples=["2023-10-01T00:00:00"],
+        description="メモを一意に識別するID番号。データベースで自動的に割り当てられます。",
+        examples=[123],
     ),
-]
-IsCompleted = Annotated[
-    bool,
-    Field(False, description="メモが完了したかどうかを示すフラグ", examples=[False]),
 ]
 
 MemoTitle = Annotated[
@@ -27,20 +21,30 @@ MemoTitle = Annotated[
 ]
 
 MemoDesc = Annotated[
-    str,
+    str | None,
     Field(
-        default="",
+        default=None,
         description="メモの内容についての追加情報。任意で記入できます。",
         examples=["会議で話すトピック：プロジェクトの進捗状況"],
     ),
 ]
-MemoId = Annotated[
-    int,
+
+Priority = Annotated[str, Field(description="優先度", examples=["高"])]
+
+DueDate = Annotated[
+    datetime | None,
     Field(
-        description="メモを一意に識別するID番号。データベースで自動的に割り当てられます。",
-        examples=[123],
+        default=None,
+        description="メモの期限日、設定されていない場合はNone",
+        examples=["2023-10-01T00:00:00"],
     ),
 ]
+
+IsCompleted = Annotated[
+    bool,
+    Field(default=False, description="メモが完了したかどうかを示すフラグ", examples=[False]),
+]
+
 ResponseMsg = Annotated[
     str,
     Field(
@@ -51,20 +55,19 @@ ResponseMsg = Annotated[
 
 
 # ── モデル ────────────────────────────────────────────────
-class MemoStatusSchema(BaseModel):
-    priority: Priority
-    due_date: DueDate = None
-    is_completed: IsCompleted = False
-
-
 class CreateAndUpdateMemoSchema(BaseModel):
     title: MemoTitle
-    description: MemoDesc = None
-    status: Annotated[MemoStatusSchema, Field(description="メモの状態を表す情報")]
+    description: MemoDesc
+    priority: Priority
+    due_date: DueDate
+    is_completed: IsCompleted
 
 
 class MemoSchema(CreateAndUpdateMemoSchema):
+    model_config = ConfigDict(from_attributes=True)
     memo_id: MemoId
+    created_at: datetime
+    updated_at: datetime | None
 
 
 class ResponseSchema(BaseModel):

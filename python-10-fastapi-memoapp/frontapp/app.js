@@ -164,9 +164,9 @@ async function fetchAndDisplayMemos() {
                 <td>${memo.title}</td>
                 <td>${memo.description}</td>
                 <!-- ▽▽▽ 追加 ▽▽▽ -->
-                <td>${memo.status.priority}</td>
-                <td>${memo.status.due_date ? memo.status.due_date.split('T')[0] : ''}</td>
-                <td>${memo.status.is_completed ? '完了' : '未完了'}</td>
+                <td>${memo.priority}</td>
+                <td>${memo.due_date ? memo.due_date.split('T')[0] : ''}</td>
+                <td>${memo.is_completed ? '完了' : '未完了'}</td>
                 <!-- △△△ 追加 △△△ -->
                 <td>
                     <button class="edit" data-id="${memo.memo_id}">編集</button>
@@ -201,10 +201,10 @@ async function editMemo(memoId) {
     document.getElementById('title').value = memo.title;
     document.getElementById('description').value = memo.description;
     // ▽▽▽ 追加 ▽▽▽
-    document.getElementById('priority').value = memo.status.priority;
+    document.getElementById('priority').value = memo.priority;
     // 期限日を設定するため、日付が存在する場合のみ設定
-    document.getElementById('due_date').value = memo.status.due_date ? memo.status.due_date.split('T')[0] : '';
-    document.getElementById('is_completed').checked = memo.status.is_completed;
+    document.getElementById('due_date').value = memo.due_date ? memo.due_date.split('T')[0] : '';
+    document.getElementById('is_completed').checked = memo.is_completed;
     // △△△ 追加 △△△
     // === フォーム ===
     // フォームの見出しを「メモの編集」に更新
@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const due_date = document.getElementById('due_date').value || null;
         const is_completed = document.getElementById('is_completed').checked;
         // メモオブジェクトを作成
-        const memo = { title, description, status: { priority, due_date, is_completed } };
+        const memo = { title, description, priority, due_date, is_completed };
         // △△△ 追加 △△△
 
         // 編集中のメモIDがある場合は更新、なければ新規作成を実行
@@ -255,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const priority = document.getElementById('priority').value;
         const due_date = document.getElementById('due_date').value || null;
         const is_completed = document.getElementById('is_completed').checked;
-        await updateMemo({ title, description, status: { priority, due_date, is_completed } });
+        await updateMemo({ title, description, priority, due_date, is_completed });
         // △△△ 追加 △△△
     };
 
