@@ -1,16 +1,15 @@
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-import schemas.memo as memo_schema
-import models.memo as memo_model
 from datetime import datetime, timezone
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-# ==================================================
-# 非同期CRUD処理
-# ==================================================
-# 新規登録
+import models.memo as memo_model
+import schemas.memo as memo_schema
+
+
 async def create_memo(
-    db_session: AsyncSession, memo_data: memo_schema.CreateAndUpdateMemoSchema
+    db_session: AsyncSession,
+    memo_data: memo_schema.CreateAndUpdateMemoSchema
 ) -> memo_model.Memo:
 
     memo = memo_model.Memo(
@@ -26,17 +25,20 @@ async def create_memo(
     return memo
 
 
-# 全件取得
-async def get_memos(db_session: AsyncSession) -> list[memo_model.Memo]:
+async def get_memos(
+    db_session: AsyncSession
+) -> list[memo_model.Memo]:
 
-    result = await db_session.execute(select(memo_model.Memo))
+    result = await db_session.execute(
+        select(memo_model.Memo)
+    )
     memos = result.scalars().all()
     return memos
 
 
-# 1件取得
 async def get_memo_by_id(
-    db_session: AsyncSession, memo_id: int
+    db_session: AsyncSession,
+    memo_id: int
 ) -> memo_model.Memo | None:
 
     result = await db_session.execute(
@@ -46,7 +48,6 @@ async def get_memo_by_id(
     return memo
 
 
-# 更新処理
 async def update_memo(
     db_session: AsyncSession,
     memo_id: int,
@@ -63,16 +64,16 @@ async def update_memo(
         memo.is_completed = memo_data.is_completed
         await db_session.commit()
         await db_session.refresh(memo)
-
     return memo
 
 
-# 削除処理
-async def delete_memo(db_session: AsyncSession, memo_id: int) -> memo_model.Memo | None:
+async def delete_memo(
+    db_session: AsyncSession,
+    memo_id: int
+) -> memo_model.Memo | None:
 
     memo = await get_memo_by_id(db_session, memo_id)
     if memo:
         await db_session.delete(memo)
         await db_session.commit()
-
     return memo

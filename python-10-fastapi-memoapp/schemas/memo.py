@@ -3,7 +3,6 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
-# ── 型エイリアス ──────────────────────────────────────────
 MemoId = Annotated[
     int, Field(
         description="メモを一意に識別するID番号。データベースで自動的に割り当てられます。",
@@ -58,7 +57,6 @@ ResponseMessage = Annotated[
 ]
 
 
-# ── モデル ────────────────────────────────────────────────
 class CreateAndUpdateMemoSchema(BaseModel):
     title: MemoTitle
     description: MemoDescription

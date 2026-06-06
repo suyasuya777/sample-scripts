@@ -1,13 +1,10 @@
-from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column
-import db
 from datetime import datetime, timezone
 
+import db
+from sqlalchemy import String
+from sqlalchemy.orm import Mapped, mapped_column
 
-# ==================================================
-# モデル
-# ==================================================
-# memosテーブル用：モデル
+
 class Memo(db.Base):
     __tablename__ = "memos"
 
