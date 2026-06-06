@@ -1,6 +1,6 @@
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column
-from db import Base
+import db
 from datetime import datetime, timezone
 
 
@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 # モデル
 # ==================================================
 # memosテーブル用：モデル
-class Memo(Base):
+class Memo(db.Base):
     __tablename__ = "memos"
 
     memo_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
