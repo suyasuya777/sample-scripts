@@ -169,8 +169,8 @@ async function fetchAndDisplayMemos() {
                 <td>${memo.is_completed ? '完了' : '未完了'}</td>
                 <!-- △△△ 追加 △△△ -->
                 <td>
-                    <button class="edit" data-id="${memo.memo_id}">編集</button>
-                    <button class="delete" data-id="${memo.memo_id}">削除</button>
+                    <button class="edit" data-id="${memo.id}">編集</button>
+                    <button class="delete" data-id="${memo.id}">削除</button>
                 </td>
             `;
             // 作成した行をテーブルのbodyに追加

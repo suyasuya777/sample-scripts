@@ -65,7 +65,7 @@ pip install -r requirements.txt
 python init_database.py
 
 # サーバーの起動
-.venv\Scripts\python.exe -m uvicorn main:app --reload
+python -m uvicorn main:app --reload
 ```
 
 起動後、Swagger UI は `http://127.0.0.1:8000/docs` で確認できます。

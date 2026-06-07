@@ -1,15 +1,14 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 import models.memo as memo_model
 import schemas.memo as memo_schema
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def create_memo(
     db_session: AsyncSession,
-    memo_data: memo_schema.CreateAndUpdateMemoSchema
+    memo_data: memo_schema.BaseSchema
 ) -> memo_model.Memo:
 
     memo = memo_model.Memo(
@@ -38,11 +37,11 @@ async def get_memos(
 
 async def get_memo_by_id(
     db_session: AsyncSession,
-    memo_id: int
+    id: int
 ) -> memo_model.Memo | None:
 
     result = await db_session.execute(
-        select(memo_model.Memo).where(memo_model.Memo.memo_id == memo_id)
+        select(memo_model.Memo).where(memo_model.Memo.id == id)
     )
     memo = result.scalars().first()
     return memo
@@ -50,11 +49,11 @@ async def get_memo_by_id(
 
 async def update_memo(
     db_session: AsyncSession,
-    memo_id: int,
-    memo_data: memo_schema.CreateAndUpdateMemoSchema,
+    id: int,
+    memo_data: memo_schema.BaseSchema,
 ) -> memo_model.Memo | None:
 
-    memo = await get_memo_by_id(db_session, memo_id)
+    memo = await get_memo_by_id(db_session, id)
     if memo:
         memo.title = memo_data.title
         memo.description = memo_data.description
@@ -69,10 +68,10 @@ async def update_memo(
 
 async def delete_memo(
     db_session: AsyncSession,
-    memo_id: int
+    id: int
 ) -> memo_model.Memo | None:
 
-    memo = await get_memo_by_id(db_session, memo_id)
+    memo = await get_memo_by_id(db_session, id)
     if memo:
         await db_session.delete(memo)
         await db_session.commit()
