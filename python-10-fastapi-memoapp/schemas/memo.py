@@ -57,7 +57,7 @@ ResponseMessage = Annotated[
 ]
 
 
-class BaseSchema(BaseModel):
+class MemoBase(BaseModel):
     title: MemoTitle
     description: MemoDescription
     priority: MemoPriority
@@ -65,12 +65,12 @@ class BaseSchema(BaseModel):
     is_completed: MemoIsCompleted
 
 
-class Schema(BaseSchema):
+class Memo(MemoBase):
     model_config = ConfigDict(from_attributes=True)
     id: MemoId
     created_at: datetime
     updated_at: datetime | None
 
 
-class ResponseSchema(BaseModel):
+class MemoResponse(BaseModel):
     message: ResponseMessage

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 async def create_memo(
     db_session: AsyncSession,
-    memo_data: memo_schema.BaseSchema
+    memo_data: memo_schema.MemoBase
 ) -> memo_model.Memo:
 
     memo = memo_model.Memo(
@@ -50,7 +50,7 @@ async def get_memo_by_id(
 async def update_memo(
     db_session: AsyncSession,
     id: int,
-    memo_data: memo_schema.BaseSchema,
+    memo_data: memo_schema.MemoBase,
 ) -> memo_model.Memo | None:
 
     memo = await get_memo_by_id(db_session, id)
