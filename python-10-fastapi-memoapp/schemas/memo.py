@@ -49,7 +49,7 @@ MemoIsCompleted = Annotated[
     )
 ]
 
-ResponseMessage = Annotated[
+MemoResponseMessage = Annotated[
     str, Field(
         description="API操作の結果を説明するメッセージ。",
         examples=["メモの更新に成功しました。"],
@@ -73,4 +73,4 @@ class Memo(MemoBase):
 
 
 class MemoResponse(BaseModel):
-    message: ResponseMessage
+    message: MemoResponseMessage
