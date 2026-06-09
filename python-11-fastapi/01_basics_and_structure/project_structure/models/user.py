@@ -1,16 +1,34 @@
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 from sqlalchemy import String
-from database import Base
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+import database
+
+if TYPE_CHECKING:
+    from models.item import Item
 
 
-class User(Base):
+class User(database.Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(String, nullable=False)
-    email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        index=True
+    )
 
-    # 1対多: 1人のUserが複数のItemを持つ
+    name: Mapped[str] = mapped_column(
+        String(50)
+    )
+
+    email: Mapped[str] = mapped_column(
+        String(50),
+        unique=True
+    )
+
     items: Mapped[list["Item"]] = relationship(
-        "Item", back_populates="owner", cascade="all, delete-orphan"
+        "Item",
+        back_populates="owner",
+        cascade="all, delete-orphan"
     )

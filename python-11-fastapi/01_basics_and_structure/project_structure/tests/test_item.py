@@ -4,6 +4,12 @@ from main import app
 client = TestClient(app)
 
 
+def _create_user(name: str, email: str) -> int:
+    """テスト用ユーザーを作成してIDを返す"""
+    res = client.post("/users", json={"name": name, "email": email})
+    return res.json()["id"]
+
+
 def test_get_items():
     response = client.get("/items")
     assert response.status_code == 200
@@ -17,9 +23,11 @@ def test_get_items_paged():
 
 
 def test_create_item():
+    user_id = _create_user("Item Owner", "item_owner@example.com")
+
     response = client.post(
         "/items",
-        json={"title": "Sample Item", "description": "A test item", "user_id": 1},
+        json={"title": "Sample Item", "description": "A test item", "user_id": user_id},
     )
     assert response.status_code == 200
     data = response.json()
@@ -29,10 +37,11 @@ def test_create_item():
 
 
 def test_get_item():
-    # 事前にアイテムを作成
+    user_id = _create_user("Get Item User", "get_item_user@example.com")
+
     create_res = client.post(
         "/items",
-        json={"title": "Get Test", "description": "desc", "user_id": 1},
+        json={"title": "Get Test", "description": "desc", "user_id": user_id},
     )
     item_id = create_res.json()["id"]
 
@@ -47,30 +56,25 @@ def test_get_item_not_found():
 
 
 def test_get_items_by_user():
-    response = client.get("/items/user/1")
+    user_id = _create_user("Items By User", "items_by_user@example.com")
+
+    client.post(
+        "/items",
+        json={"title": "User Item", "description": "desc", "user_id": user_id},
+    )
+
+    response = client.get(f"/items/user/{user_id}")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
-
-
-def test_update_item():
-    create_res = client.post(
-        "/items",
-        json={"title": "Before Update", "description": "old", "user_id": 1},
-    )
-    item_id = create_res.json()["id"]
-
-    response = client.put(
-        f"/items/{item_id}",
-        json={"title": "After Update", "description": "new", "user_id": 1},
-    )
-    assert response.status_code == 200
-    assert response.json()["title"] == "After Update"
+    assert len(response.json()) >= 1
 
 
 def test_patch_item():
+    user_id = _create_user("Patch Item User", "patch_item_user@example.com")
+
     create_res = client.post(
         "/items",
-        json={"title": "Patch Target", "description": "old", "user_id": 1},
+        json={"title": "Patch Target", "description": "old", "user_id": user_id},
     )
     item_id = create_res.json()["id"]
 
@@ -83,10 +87,20 @@ def test_patch_item():
     assert response.json()["description"] == "old"  # 変更されていない
 
 
+def test_patch_item_not_found():
+    response = client.patch(
+        "/items/99999",
+        json={"title": "No Item"},
+    )
+    assert response.status_code == 404
+
+
 def test_delete_item():
+    user_id = _create_user("Delete Item User", "delete_item_user@example.com")
+
     create_res = client.post(
         "/items",
-        json={"title": "To Delete", "description": "bye", "user_id": 1},
+        json={"title": "To Delete", "description": "bye", "user_id": user_id},
     )
     item_id = create_res.json()["id"]
 
@@ -96,14 +110,6 @@ def test_delete_item():
 
     # 削除後は404
     response = client.get(f"/items/{item_id}")
-    assert response.status_code == 404
-
-
-def test_update_item_not_found():
-    response = client.put(
-        "/items/99999",
-        json={"title": "No Item", "description": "none", "user_id": 1},
-    )
     assert response.status_code == 404
 
 

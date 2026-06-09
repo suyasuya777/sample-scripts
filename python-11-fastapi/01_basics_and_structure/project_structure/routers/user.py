@@ -1,24 +1,38 @@
+from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from database import get_db
+
 from cruds import user as user_crud
-from schemas.user import UserCreate, UserUpdate, UserResponse
+from database import get_db
+from schemas.user import UserCreate, UserResponse, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
+DBSession = Annotated[AsyncSession, Depends(get_db)]
 
 @router.get("", response_model=list[UserResponse])
-async def find_all(db: AsyncSession = Depends(get_db)):
+async def get_users(
+    db: DBSession
+):
+
     return await user_crud.get_users(db)
 
 
 @router.get("/paged", response_model=list[UserResponse])
-async def find_paged(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
+async def get_users_paged(
+    db: DBSession,
+    skip: int = 0,
+    limit: int = 100
+):
     return await user_crud.get_users_paged(db, skip=skip, limit=limit)
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-async def find_one(user_id: int, db: AsyncSession = Depends(get_db)):
+async def get_user(
+    user_id: int,
+    db: DBSession
+):
+
     user = await user_crud.get_user(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -26,20 +40,21 @@ async def find_one(user_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("", response_model=UserResponse)
-async def create(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
+async def create_user(
+    user_in: UserCreate,
+    db: DBSession
+):
+
     return await user_crud.create_user(db, user_in)
 
 
-@router.put("/{user_id}", response_model=UserResponse)
-async def update(user_id: int, user_in: UserCreate, db: AsyncSession = Depends(get_db)):
-    user = await user_crud.update_user(db, user_id, user_in)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-
 @router.patch("/{user_id}", response_model=UserResponse)
-async def patch(user_id: int, user_in: UserUpdate, db: AsyncSession = Depends(get_db)):
+async def patch_user(
+    user_id: int,
+    user_in: UserUpdate,
+    db: DBSession
+):
+
     user = await user_crud.patch_user(db, user_id, user_in)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -47,7 +62,11 @@ async def patch(user_id: int, user_in: UserUpdate, db: AsyncSession = Depends(ge
 
 
 @router.delete("/{user_id}", response_model=bool)
-async def delete(user_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_user(
+    user_id: int,
+    db: DBSession
+):
+
     deleted = await user_crud.delete_user(db, user_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="User not found")

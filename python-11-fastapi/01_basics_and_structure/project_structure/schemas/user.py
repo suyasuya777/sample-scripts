@@ -1,18 +1,56 @@
 from __future__ import annotations
-from typing import Annotated
-from pydantic import BaseModel, Field, EmailStr
 
-NameStr = Annotated[
-    str, Field(min_length=1, max_length=50, description="ユーザー名（1〜50文字）")
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+from schemas import item as item_schema
+
+UserName = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=50,
+        description="ユーザー名"
+    )
 ]
-EmailStr_ = Annotated[
-    EmailStr, Field(description="メールアドレス（形式バリデーションあり）")
+
+UserEmail = Annotated[
+    EmailStr,
+    Field(
+        max_length=50,
+        description="メールアドレス"
+    )
+]
+
+UserOptionalName = Annotated[
+    str | None,
+    Field(
+        min_length=1,
+        max_length=50,
+        description="ユーザー名（省略可）"
+    )
+]
+
+UserOptionalEmail = Annotated[
+    EmailStr | None,
+    Field(
+        max_length=50,
+        description="メールアドレス（省略可）"
+    )
+]
+
+UserItems = Annotated[
+    list[item_schema.ItemResponse],
+    Field(
+        description="所有アイテム一覧"
+    )
 ]
 
 
 class UserBase(BaseModel):
-    name: NameStr
-    email: EmailStr_
+    name: UserName
+    email: UserEmail
 
 
 class UserCreate(UserBase):
@@ -20,24 +58,12 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
-    name: Annotated[
-        str | None, Field(None, min_length=1, max_length=50, description="ユーザー名（1〜50文字）")
-    ] = None
-    email: Annotated[
-        EmailStr | None, Field(None, description="メールアドレス（形式バリデーションあり）")
-    ] = None
+    name: UserOptionalName = None
+    email: UserOptionalEmail = None
 
 
 class UserResponse(UserBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
-    items: Annotated[
-        list[ItemResponse], Field(default=[], description="所有アイテム一覧")
-    ] = []
-
-    model_config = {"from_attributes": True}
-
-
-# 循環参照を解決するため末尾でインポート＆rebuild
-from schemas.item import ItemResponse  # noqa: E402
-
-UserResponse.model_rebuild()
+    items: UserItems = Field(default_factory=list)

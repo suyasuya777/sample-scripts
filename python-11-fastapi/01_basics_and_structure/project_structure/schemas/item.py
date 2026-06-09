@@ -1,22 +1,61 @@
 from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-TitleStr = Annotated[
-    str, Field(..., min_length=1, max_length=100, description="タイトル（1〜100文字）")
+ItemTitle = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=50,
+        description="タイトル"
+    )
 ]
-DescriptionStr = Annotated[
-    str | None, Field(None, max_length=500, description="説明（500文字以内）")
+
+ItemDescription = Annotated[
+    str | None,
+    Field(
+        max_length=255,
+        description="説明"
+    )
 ]
-UserIdInt = Annotated[
-    int, Field(..., gt=0, description="所有ユーザーID（1以上の整数）")
+
+ItemUserId = Annotated[
+    int,
+    Field(
+        gt=0,
+        description="所有ユーザーID"
+    )
+]
+
+ItemOptionalTitle = Annotated[
+    str | None,
+    Field(
+        max_length=50,
+        description="タイトル（省略可）"
+    )
+]
+
+ItemOptionalDescription = Annotated[
+    str | None,
+    Field(
+        max_length=255,
+        description="説明（省略可）"
+    )
+]
+
+ItemOptionalUserId = Annotated[
+    int | None,
+    Field(
+        gt=0,
+        description="所有ユーザーID（省略可）"
+    )
 ]
 
 
 class ItemBase(BaseModel):
-    title: TitleStr
-    description: DescriptionStr
-    user_id: UserIdInt
+    title: ItemTitle
+    description: ItemDescription = None
+    user_id: ItemUserId
 
 
 class ItemCreate(ItemBase):
@@ -24,16 +63,11 @@ class ItemCreate(ItemBase):
 
 
 class ItemUpdate(BaseModel):
-    title: Annotated[
-        str | None, Field(None, min_length=1, max_length=100, description="タイトル")
-    ] = None
-    description: DescriptionStr = None
-    user_id: Annotated[
-        int | None, Field(None, gt=0, description="所有ユーザーID（1以上の整数）")
-    ] = None
+    title: ItemOptionalTitle = None
+    description: ItemOptionalDescription = None
+    user_id: ItemOptionalUserId = None
 
 
 class ItemResponse(ItemBase):
+    model_config = ConfigDict(from_attributes=True)
     id: int
-
-    model_config = {"from_attributes": True}

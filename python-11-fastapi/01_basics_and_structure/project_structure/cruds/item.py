@@ -5,34 +5,54 @@ from models.item import Item
 from schemas.item import ItemCreate, ItemUpdate
 
 
-# 一覧取得
-async def get_items(db: AsyncSession) -> list[Item]:
-    result = await db.execute(select(Item))
+async def get_items(
+    db: AsyncSession
+) -> list[Item]:
+
+    result = await db.execute(
+        select(Item)
+    )
     return result.scalars().all()
 
 
-# 1件取得（id）
-async def get_item(db: AsyncSession, item_id: int) -> Item | None:
-    result = await db.execute(select(Item).where(Item.id == item_id))
+async def get_item(
+    db: AsyncSession,
+    item_id: int
+) -> Item | None:
+
+    result = await db.execute(
+        select(Item).where(Item.id == item_id)
+    )
     return result.scalar_one_or_none()
 
 
-# 条件付き取得
-async def get_items_by_user(db: AsyncSession, user_id: int) -> list[Item]:
-    result = await db.execute(select(Item).where(Item.user_id == user_id))
-    return result.scalars().all()
-
-
-# ページネーション
-async def get_items_paged(
-    db: AsyncSession, skip: int = 0, limit: int = 100
+async def get_items_by_user(
+    db: AsyncSession,
+    user_id: int
 ) -> list[Item]:
-    result = await db.execute(select(Item).offset(skip).limit(limit))
+    result = await db.execute(
+        select(Item).where(Item.user_id == user_id)
+    )
     return result.scalars().all()
 
 
-# ユーザーに紐づく作成
-async def create_user_item(db: AsyncSession, item_in: ItemCreate, user_id: int) -> Item:
+async def get_items_paged(
+    db: AsyncSession,
+    skip: int = 0,
+    limit: int = 100
+) -> list[Item]:
+    result = await db.execute(
+        select(Item).offset(skip).limit(limit)
+    )
+    return result.scalars().all()
+
+
+async def create_user_item(
+    db: AsyncSession,
+    item_in: ItemCreate,
+    user_id: int
+) -> Item:
+
     item = Item(**item_in.model_dump(exclude={"user_id"}), user_id=user_id)
     db.add(item)
     await db.commit()
@@ -40,26 +60,15 @@ async def create_user_item(db: AsyncSession, item_in: ItemCreate, user_id: int) 
     return item
 
 
-# 全フィールド更新（PUT）
-async def update_item(
-    db: AsyncSession, item_id: int, item_in: ItemCreate
-) -> Item | None:
-    result = await db.execute(select(Item).where(Item.id == item_id))
-    item = result.scalar_one_or_none()
-    if not item:
-        return None
-    for key, value in item_in.model_dump().items():
-        setattr(item, key, value)
-    await db.commit()
-    await db.refresh(item)
-    return item
-
-
-# 部分更新（PATCH）
 async def patch_item(
-    db: AsyncSession, item_id: int, item_in: ItemUpdate
+    db: AsyncSession,
+    item_id: int,
+    item_in: ItemUpdate
 ) -> Item | None:
-    result = await db.execute(select(Item).where(Item.id == item_id))
+
+    result = await db.execute(
+        select(Item).where(Item.id == item_id)
+    )
     item = result.scalar_one_or_none()
     if not item:
         return None
@@ -70,9 +79,14 @@ async def patch_item(
     return item
 
 
-# 1件削除
-async def delete_item(db: AsyncSession, item_id: int) -> bool:
-    result = await db.execute(select(Item).where(Item.id == item_id))
+async def delete_item(
+    db: AsyncSession,
+    item_id: int
+) -> bool:
+
+    result = await db.execute(
+        select(Item).where(Item.id == item_id)
+    )
     item = result.scalar_one_or_none()
     if not item:
         return False

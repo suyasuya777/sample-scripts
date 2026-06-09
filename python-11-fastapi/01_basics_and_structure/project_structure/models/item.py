@@ -1,17 +1,37 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, ForeignKey
-from database import Base
+
+import database
+
+if TYPE_CHECKING:
+    from models.user import User
 
 
-class Item(Base):
+class Item(database.Base):
     __tablename__ = "items"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    title: Mapped[str] = mapped_column(String, nullable=False)
-    description: Mapped[str | None] = mapped_column(String, nullable=True)
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        index=True
+    )
 
-    # 外部キー: usersテーブルのidを参照
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    title: Mapped[str] = mapped_column(
+        String(50)
+    )
 
-    # 多対1: 複数のItemが1人のUserに属する
-    owner: Mapped["User"] = relationship("User", back_populates="items")
+    description: Mapped[str | None] = mapped_column(
+        String(255)
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+    )
+
+    owner: Mapped["User"] = relationship(
+        "User",
+        back_populates="items"
+    )

@@ -45,21 +45,6 @@ def test_get_user_not_found():
     assert response.status_code == 404
 
 
-def test_update_user():
-    create_res = client.post(
-        "/users",
-        json={"name": "Before", "email": "before@example.com"},
-    )
-    user_id = create_res.json()["id"]
-
-    response = client.put(
-        f"/users/{user_id}",
-        json={"name": "After", "email": "after@example.com"},
-    )
-    assert response.status_code == 200
-    assert response.json()["name"] == "After"
-
-
 def test_patch_user():
     create_res = client.post(
         "/users",
@@ -76,6 +61,14 @@ def test_patch_user():
     assert response.json()["email"] == "patch@example.com"  # 変更されていない
 
 
+def test_patch_user_not_found():
+    response = client.patch(
+        "/users/99999",
+        json={"name": "No User"},
+    )
+    assert response.status_code == 404
+
+
 def test_delete_user():
     create_res = client.post(
         "/users",
@@ -89,14 +82,6 @@ def test_delete_user():
 
     # 削除後は404
     response = client.get(f"/users/{user_id}")
-    assert response.status_code == 404
-
-
-def test_update_user_not_found():
-    response = client.put(
-        "/users/99999",
-        json={"name": "No User", "email": "nouser@example.com"},
-    )
     assert response.status_code == 404
 
 

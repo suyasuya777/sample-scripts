@@ -20,7 +20,6 @@ MemoTitle = Annotated[
 
 MemoDescription = Annotated[
     str | None, Field(
-        default=None,
         description="メモの内容についての追加情報。任意で記入できます。",
         examples=["会議で話すトピック：プロジェクトの進捗状況"]
     )
@@ -35,7 +34,6 @@ MemoPriority = Annotated[
 
 MemoDueDate = Annotated[
     datetime | None, Field(
-        default=None,
         description="メモの期限日、設定されていない場合はNone",
         examples=["2023-10-01T00:00:00"]
     )
@@ -43,7 +41,6 @@ MemoDueDate = Annotated[
 
 MemoIsCompleted = Annotated[
     bool, Field(
-        default=False,
         description="メモが完了したかどうかを示すフラグ",
         examples=[False]
     )
@@ -59,17 +56,17 @@ MemoResponseMessage = Annotated[
 
 class MemoBase(BaseModel):
     title: MemoTitle
-    description: MemoDescription
+    description: MemoDescription = None
     priority: MemoPriority
-    due_date: MemoDueDate
-    is_completed: MemoIsCompleted
+    due_date: MemoDueDate = None
+    is_completed: MemoIsCompleted = False
 
 
 class Memo(MemoBase):
     model_config = ConfigDict(from_attributes=True)
     id: MemoId
     created_at: datetime
-    updated_at: datetime | None
+    updated_at: datetime | None = None
 
 
 class MemoResponse(BaseModel):

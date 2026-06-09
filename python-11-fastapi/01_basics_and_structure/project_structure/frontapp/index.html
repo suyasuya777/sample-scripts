@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FastAPI Manager</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+JP:wght@300;400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- topbar -->
+    <header class="topbar">
+      <div class="logo">
+        <div class="logo-icon">⚡</div>
+        FastAPI Manager
+      </div>
+      <div class="base-url-wrap">
+        <label>BASE URL</label>
+        <input id="baseUrl" type="text" value="http://127.0.0.1:8000" />
+      </div>
+      <div class="status-pill" id="statusPill">
+        <span class="dot"></span>
+        <span id="statusText">待機中</span>
+      </div>
+    </header>
+
+    <!-- タブバー -->
+    <div class="tabbar">
+      <button
+        class="tab-btn active"
+        id="tab-users"
+        onclick="switchTab('users')"
+      >
+        👤 Users <span class="tab-count" id="usersCount">-</span>
+      </button>
+      <button class="tab-btn" id="tab-items" onclick="switchTab('items')">
+        📦 Items <span class="tab-count" id="itemsCount">-</span>
+      </button>
+    </div>
+
+    <!-- ══ Users タブ ══ -->
+    <div class="tab-panel active" id="panel-users">
+      <div class="toolbar">
+        <span class="toolbar-title">👤 USERS</span>
+        <button class="btn btn-primary" onclick="openUserModal()">
+          ＋ 新規ユーザー
+        </button>
+        <button class="btn btn-ghost" onclick="initLoad()">↻ 更新</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="main-table">
+          <thead>
+            <tr>
+              <th style="width: 190px">ユーザー</th>
+              <th>アイテム（全件）</th>
+              <th style="width: 120px; text-align: right">操作</th>
+            </tr>
+          </thead>
+          <tbody id="usersBody">
+            <tr>
+              <td colspan="3" class="loading-cell">
+                <span class="spinner"></span>読み込み中...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Users ページネーションバー -->
+      <div class="pager-bar">
+        <div class="pager-left">
+          <span class="pager-label">👤 Users ページネーション</span>
+          <span class="pager-endpoint" id="u-endpoint"
+            >GET /users/paged?skip=0&amp;limit=5</span
+          >
+        </div>
+        <div class="pager-nav-group">
+          <button class="pager-nav-btn" id="u-first" onclick="uGo(1)" disabled>
+            |◀ 先頭に
+          </button>
+          <button
+            class="pager-nav-btn"
+            id="u-prev"
+            onclick="uGo(uSt.page - 1)"
+            disabled
+          >
+            ◀ 前に
+          </button>
+          <span class="pager-page-info" id="u-info">— / — ページ</span>
+          <button class="pager-nav-btn" id="u-next" onclick="uGo(uSt.page + 1)">
+            次に ▶
+          </button>
+          <button
+            class="pager-nav-btn"
+            id="u-last"
+            onclick="uGo(uSt.totalPages)"
+          >
+            最後に ▶|
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Items タブ ══ -->
+    <div class="tab-panel" id="panel-items">
+      <div class="toolbar">
+        <span class="toolbar-title">📦 ITEMS</span>
+        <button class="btn btn-primary" onclick="openItemModal()">
+          ＋ 新規アイテム
+        </button>
+        <button class="btn btn-ghost" onclick="iTabLoad()">↻ 更新</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="main-table">
+          <thead>
+            <tr>
+              <th style="width: 60px">ID</th>
+              <th>タイトル</th>
+              <th>説明</th>
+              <th style="width: 130px">ユーザー</th>
+              <th style="width: 120px; text-align: right">操作</th>
+            </tr>
+          </thead>
+          <tbody id="itemsBody">
+            <tr>
+              <td colspan="5" class="loading-cell">
+                <span class="spinner"></span>読み込み中...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Items ページネーションバー -->
+      <div class="pager-bar pager-bar-items">
+        <div class="pager-left">
+          <span class="pager-label">📦 Items ページネーション</span>
+          <span class="pager-endpoint" id="i-endpoint"
+            >GET /items/paged?skip=0&amp;limit=5</span
+          >
+        </div>
+        <div class="pager-nav-group">
+          <button class="pager-nav-btn" id="i-first" onclick="iGo(1)" disabled>
+            |◀ 先頭に
+          </button>
+          <button
+            class="pager-nav-btn"
+            id="i-prev"
+            onclick="iGo(iSt.page - 1)"
+            disabled
+          >
+            ◀ 前に
+          </button>
+          <span class="pager-page-info" id="i-info">— / — ページ</span>
+          <button class="pager-nav-btn" id="i-next" onclick="iGo(iSt.page + 1)">
+            次に ▶
+          </button>
+          <button
+            class="pager-nav-btn"
+            id="i-last"
+            onclick="iGo(iSt.totalPages)"
+          >
+            最後に ▶|
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- User モーダル -->
+    <div class="modal-overlay" id="userModal">
+      <div class="modal">
+        <div class="modal-header">
+          <div class="modal-title" id="userModalTitle">👤 ユーザー作成</div>
+          <button class="modal-close" onclick="closeModal('userModal')">
+            ✕
+          </button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="userModalId" />
+          <div class="field-group">
+            <label>名前 <span class="req">必須</span></label>
+            <input type="text" id="userModalName" placeholder="山田太郎" />
+          </div>
+          <div class="field-group">
+            <label>メールアドレス <span class="req">必須</span></label>
+            <input
+              type="email"
+              id="userModalEmail"
+              placeholder="yamada@example.com"
+            />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeModal('userModal')">
+            キャンセル
+          </button>
+          <button
+            class="btn btn-primary"
+            id="userModalBtn"
+            onclick="submitUser()"
+          >
+            作成する
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Item モーダル -->
+    <div class="modal-overlay" id="itemModal">
+      <div class="modal">
+        <div class="modal-header">
+          <div class="modal-title" id="itemModalLabel">📦 アイテム作成</div>
+          <button class="modal-close" onclick="closeModal('itemModal')">
+            ✕
+          </button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="itemModalId" />
+          <div class="field-group">
+            <label>タイトル <span class="req">必須</span></label>
+            <input
+              type="text"
+              id="itemModalName"
+              placeholder="サンプルアイテム"
+            />
+          </div>
+          <div class="field-group">
+            <label>説明 <span class="opt">省略可</span></label>
+            <input
+              type="text"
+              id="itemModalDesc"
+              placeholder="アイテムの説明"
+            />
+          </div>
+          <div class="field-group">
+            <label>ユーザー <span class="req">必須</span></label>
+            <select id="itemModalUserId">
+              <option value="">-- ユーザーを選択 --</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeModal('itemModal')">
+            キャンセル
+          </button>
+          <button
+            class="btn btn-primary"
+            id="itemModalBtn"
+            onclick="submitItem()"
+          >
+            作成する
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 削除確認 -->
+    <div class="modal-overlay delete-dialog" id="deleteModal">
+      <div class="modal">
+        <div class="modal-header">
+          <div class="modal-title">🗑️ 削除の確認</div>
+          <button class="modal-close" onclick="closeModal('deleteModal')">
+            ✕
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="delete-warning">
+            <span class="icon">⚠️</span>
+            <span id="deleteWarningText">本当に削除しますか？</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeModal('deleteModal')">
+            キャンセル
+          </button>
+          <button class="btn btn-danger" onclick="confirmDelete()">
+            削除する
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast-area" id="toastArea"></div>
+
+    <script>
+      const LIMIT = 5;
+
+      // ── キャッシュ（モーダル選択肢用） ──
+      let allUsers = [];
+      let allItems = [];
+
+      // ── Users ページネーション状態 ──
+      const uSt = { page: 1, totalPages: 1, total: 0 };
+
+      // ── Items ページネーション状態 ──
+      const iSt = { page: 1, totalPages: 1, total: 0 };
+
+      let deleteTarget = null;
+      let userMode = "create";
+      let itemMode = "create";
+      let currentTab = "users";
+
+      // ════════════════════════════════════════
+      // API
+      // ════════════════════════════════════════
+      const getBase = () =>
+        document.getElementById("baseUrl").value.replace(/\/$/, "");
+
+      function setStatus(type, text) {
+        document.getElementById("statusPill").className = "status-pill " + type;
+        document.getElementById("statusText").textContent = text;
+      }
+
+      async function api(method, path, body) {
+        setStatus("sending", "通信中...");
+        try {
+          const opts = {
+            method,
+            headers: { "Content-Type": "application/json" },
+          };
+          if (body && method !== "GET" && method !== "DELETE")
+            opts.body = JSON.stringify(body);
+          const res = await fetch(getBase() + path, opts);
+          const ct = res.headers.get("content-type") || "";
+          const data = ct.includes("json")
+            ? await res.json()
+            : await res.text();
+          if (!res.ok) throw new Error(data?.detail || res.statusText);
+          setStatus("ok", res.status + " OK");
+          return data;
+        } catch (e) {
+          setStatus("error", "接続エラー");
+          throw e;
+        }
+      }
+
+      function toast(msg, type = "success") {
+        const el = document.createElement("div");
+        el.className = "toast " + type;
+        el.innerHTML =
+          '<span class="toast-icon">' +
+          (type === "success" ? "✓" : "✕") +
+          "</span>" +
+          esc(msg);
+        document.getElementById("toastArea").appendChild(el);
+        setTimeout(() => el.remove(), 3000);
+      }
+
+      // ════════════════════════════════════════
+      // タブ切り替え
+      // ════════════════════════════════════════
+      function switchTab(tab) {
+        currentTab = tab;
+        document
+          .querySelectorAll(".tab-btn")
+          .forEach((b) => b.classList.toggle("active", b.id === "tab-" + tab));
+        document
+          .querySelectorAll(".tab-panel")
+          .forEach((p) =>
+            p.classList.toggle("active", p.id === "panel-" + tab),
+          );
+        // タブ初回表示時にロード
+        if (tab === "items" && iSt.total === 0) iTabLoad();
+      }
+
+      // ════════════════════════════════════════
+      // 初期ロード（全件取得 → 総件数把握）
+      // ════════════════════════════════════════
+      async function initLoad() {
+        try {
+          [allUsers, allItems] = await Promise.all([
+            api("GET", "/users"),
+            api("GET", "/items"),
+          ]);
+          // 総件数をセット
+          uSt.total = allUsers.length;
+          uSt.totalPages = Math.ceil(allUsers.length / LIMIT) || 1;
+          iSt.total = allItems.length;
+          iSt.totalPages = Math.ceil(allItems.length / LIMIT) || 1;
+
+          document.getElementById("usersCount").textContent = allUsers.length;
+          document.getElementById("itemsCount").textContent = allItems.length;
+
+          // Users 1ページ目をAPIで取得
+          uSt.page = 1;
+          await uFetch();
+
+          // Items タブが開いていれば更新
+          if (currentTab === "items") {
+            iSt.page = 1;
+            await iFetch();
+          }
+        } catch (e) {
+          toast(e.message, "error");
+        }
+      }
+
+      // ════════════════════════════════════════
+      // Users ページネーション
+      // ════════════════════════════════════════
+      async function uGo(page) {
+        page = Math.max(1, Math.min(page, uSt.totalPages));
+        uSt.page = page;
+        await uFetch();
+      }
+
+      async function uFetch() {
+        const skip = (uSt.page - 1) * LIMIT;
+        const path = "/users/paged?skip=" + skip + "&limit=" + LIMIT;
+        document.getElementById("u-endpoint").textContent = "GET " + path;
+        document.getElementById("usersBody").innerHTML =
+          '<tr><td colspan="3" class="loading-cell"><span class="spinner"></span>読み込み中...</td></tr>';
+        try {
+          const data = await api("GET", path);
+          renderUsers(data);
+          updateUPager();
+        } catch (e) {
+          document.getElementById("usersBody").innerHTML =
+            '<tr><td colspan="3" style="text-align:center;padding:40px;color:var(--red)">' +
+            esc(e.message) +
+            "</td></tr>";
+        }
+      }
+
+      function updateUPager() {
+        const isFirst = uSt.page === 1;
+        const isLast = uSt.page === uSt.totalPages;
+        document.getElementById("u-info").textContent =
+          uSt.page +
+          " / " +
+          uSt.totalPages +
+          " ページ（全 " +
+          uSt.total +
+          " 件）";
+        document.getElementById("u-first").disabled = isFirst;
+        document.getElementById("u-prev").disabled = isFirst;
+        document.getElementById("u-next").disabled = isLast;
+        document.getElementById("u-last").disabled = isLast;
+      }
+
+      // ── Users テーブル描画 ──
+      function renderUsers(users) {
+        const tbody = document.getElementById("usersBody");
+        if (!users.length) {
+          tbody.innerHTML =
+            '<tr><td colspan="3"><div class="empty-state"><div class="empty-icon">👤</div>ユーザーがいません</div></td></tr>';
+          return;
+        }
+        tbody.innerHTML = users
+          .map((u) => {
+            // /users/paged のレスポンスには items フィールドが含まれる
+            const items = u.items || [];
+            const listHtml = items.length
+              ? '<div class="item-list">' +
+                items.map((it) => buildItemRow(it)).join("") +
+                "</div>"
+              : '<span class="no-items">📭 アイテムなし</span>';
+            return (
+              '<tr class="user-row">' +
+              '<td class="user-info-cell">' +
+              '<div class="user-id-badge">#' +
+              u.id +
+              "</div>" +
+              '<div class="user-name">' +
+              esc(u.name) +
+              "</div>" +
+              '<div class="user-email">' +
+              esc(u.email) +
+              "</div>" +
+              "</td>" +
+              '<td class="items-cell">' +
+              listHtml +
+              '<div class="items-cell-footer">' +
+              '<button class="add-item-btn" onclick="openItemModalForUser(' +
+              u.id +
+              ')">＋ アイテム追加</button>' +
+              "</div>" +
+              "</td>" +
+              '<td class="user-actions-cell">' +
+              '<div class="btn-group">' +
+              '<button class="btn btn-ghost btn-sm" onclick="openUserModal(' +
+              u.id +
+              ')">編集</button>' +
+              '<button class="btn btn-danger btn-sm" onclick="openDeleteModal(\'user\',' +
+              u.id +
+              ",'" +
+              esc(u.name) +
+              "')\">削除</button>" +
+              "</div>" +
+              "</td>" +
+              "</tr>" +
+              '<tr class="spacer-row"><td colspan="3"></td></tr>'
+            );
+          })
+          .join("");
+      }
+
+      // ════════════════════════════════════════
+      // Items ページネーション
+      // ════════════════════════════════════════
+      async function iTabLoad() {
+        iSt.page = 1;
+        await iFetch();
+      }
+
+      async function iGo(page) {
+        page = Math.max(1, Math.min(page, iSt.totalPages));
+        iSt.page = page;
+        await iFetch();
+      }
+
+      async function iFetch() {
+        const skip = (iSt.page - 1) * LIMIT;
+        const path = "/items/paged?skip=" + skip + "&limit=" + LIMIT;
+        document.getElementById("i-endpoint").textContent = "GET " + path;
+        document.getElementById("itemsBody").innerHTML =
+          '<tr><td colspan="5" class="loading-cell"><span class="spinner"></span>読み込み中...</td></tr>';
+        try {
+          const data = await api("GET", path);
+          renderItems(data);
+          updateIPager();
+        } catch (e) {
+          document.getElementById("itemsBody").innerHTML =
+            '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--red)">' +
+            esc(e.message) +
+            "</td></tr>";
+        }
+      }
+
+      function updateIPager() {
+        const isFirst = iSt.page === 1;
+        const isLast = iSt.page === iSt.totalPages;
+        document.getElementById("i-info").textContent =
+          iSt.page +
+          " / " +
+          iSt.totalPages +
+          " ページ（全 " +
+          iSt.total +
+          " 件）";
+        document.getElementById("i-first").disabled = isFirst;
+        document.getElementById("i-prev").disabled = isFirst;
+        document.getElementById("i-next").disabled = isLast;
+        document.getElementById("i-last").disabled = isLast;
+      }
+
+      // ── Items テーブル描画 ──
+      function renderItems(items) {
+        const tbody = document.getElementById("itemsBody");
+        if (!items.length) {
+          tbody.innerHTML =
+            '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📦</div>アイテムがありません</div></td></tr>';
+          return;
+        }
+        tbody.innerHTML = items
+          .map((it) => {
+            const user = allUsers.find((u) => u.id === it.user_id);
+            const uLabel = user
+              ? "#" + user.id + " " + esc(user.name)
+              : "User #" + it.user_id;
+            return (
+              '<tr class="user-row">' +
+              '<td class="cell-id">#' +
+              it.id +
+              "</td>" +
+              "<td><strong>" +
+              esc(it.title) +
+              "</strong></td>" +
+              '<td style="color:var(--text-sub)">' +
+              esc(it.description || "—") +
+              "</td>" +
+              '<td><span class="badge-uid">' +
+              uLabel +
+              "</span></td>" +
+              '<td class="user-actions-cell">' +
+              '<div class="btn-group">' +
+              '<button class="btn btn-ghost btn-sm" onclick="openItemModal(' +
+              it.id +
+              ')">編集</button>' +
+              '<button class="btn btn-danger btn-sm" onclick="openDeleteModal(\'item\',' +
+              it.id +
+              ",'" +
+              esc(it.title) +
+              "')\">削除</button>" +
+              "</div>" +
+              "</td>" +
+              "</tr>"
+            );
+          })
+          .join("");
+      }
+
+      // ── アイテム行（Users タブ内） ──
+      function buildItemRow(it) {
+        return (
+          '<div class="item-row">' +
+          '<span class="item-id">#' +
+          it.id +
+          "</span>" +
+          '<span class="item-title">' +
+          esc(it.title) +
+          "</span>" +
+          (it.description
+            ? '<span class="item-desc" title="' +
+              esc(it.description) +
+              '">' +
+              esc(it.description) +
+              "</span>"
+            : "") +
+          '<span class="item-actions">' +
+          '<button class="btn btn-ghost btn-sm" onclick="openItemModal(' +
+          it.id +
+          ')">編集</button>' +
+          '<button class="btn btn-danger btn-sm" onclick="openDeleteModal(\'item\',' +
+          it.id +
+          ",'" +
+          esc(it.title) +
+          "')\">削除</button>" +
+          "</span>" +
+          "</div>"
+        );
+      }
+
+      // ════════════════════════════════════════
+      // User Modal
+      // ════════════════════════════════════════
+      function openUserModal(id) {
+        const u = id ? allUsers.find((x) => x.id === id) : null;
+        userMode = u ? "edit" : "create";
+        document.getElementById("userModalTitle").textContent = u
+          ? "👤 ユーザー編集"
+          : "👤 ユーザー作成";
+        document.getElementById("userModalBtn").textContent = u
+          ? "更新する"
+          : "作成する";
+        document.getElementById("userModalId").value = u ? u.id : "";
+        document.getElementById("userModalName").value = u ? u.name : "";
+        document.getElementById("userModalEmail").value = u ? u.email : "";
+        openModal("userModal");
+      }
+
+      async function submitUser() {
+        const name = document.getElementById("userModalName").value.trim();
+        const email = document.getElementById("userModalEmail").value.trim();
+        if (!name || !email) {
+          toast("名前とメールアドレスは必須です", "error");
+          return;
+        }
+        try {
+          if (userMode === "create") {
+            await api("POST", "/users", { name, email });
+            toast("ユーザーを作成しました");
+          } else {
+            await api(
+              "PATCH",
+              "/users/" + document.getElementById("userModalId").value,
+              { name, email },
+            );
+            toast("ユーザーを更新しました");
+          }
+          closeModal("userModal");
+          await initLoad();
+        } catch (e) {
+          toast(e.message, "error");
+        }
+      }
+
+      // ════════════════════════════════════════
+      // Item Modal
+      // ════════════════════════════════════════
+      function openItemModal(id) {
+        const it = id ? allItems.find((x) => x.id === id) : null;
+        itemMode = it ? "edit" : "create";
+        document.getElementById("itemModalLabel").textContent = it
+          ? "📦 アイテム編集"
+          : "📦 アイテム作成";
+        document.getElementById("itemModalBtn").textContent = it
+          ? "更新する"
+          : "作成する";
+        document.getElementById("itemModalId").value = it ? it.id : "";
+        document.getElementById("itemModalName").value = it ? it.title : "";
+        document.getElementById("itemModalDesc").value = it
+          ? it.description || ""
+          : "";
+        const sel = document.getElementById("itemModalUserId");
+        sel.innerHTML =
+          '<option value="">-- ユーザーを選択 --</option>' +
+          allUsers
+            .map(
+              (u) =>
+                '<option value="' +
+                u.id +
+                '"' +
+                (it && it.user_id === u.id ? " selected" : "") +
+                ">#" +
+                u.id +
+                " " +
+                esc(u.name) +
+                "</option>",
+            )
+            .join("");
+        openModal("itemModal");
+      }
+
+      function openItemModalForUser(userId) {
+        openItemModal(null);
+        document.getElementById("itemModalUserId").value = userId;
+      }
+
+      async function submitItem() {
+        const title = document.getElementById("itemModalName").value.trim();
+        const desc =
+          document.getElementById("itemModalDesc").value.trim() || null;
+        const userId = parseInt(
+          document.getElementById("itemModalUserId").value,
+        );
+        if (!title || !userId) {
+          toast("タイトルとユーザーは必須です", "error");
+          return;
+        }
+        try {
+          if (itemMode === "create") {
+            await api("POST", "/items", {
+              title,
+              description: desc,
+              user_id: userId,
+            });
+            toast("アイテムを作成しました");
+          } else {
+            await api(
+              "PATCH",
+              "/items/" + document.getElementById("itemModalId").value,
+              { title, description: desc, user_id: userId },
+            );
+            toast("アイテムを更新しました");
+          }
+          closeModal("itemModal");
+          await initLoad();
+        } catch (e) {
+          toast(e.message, "error");
+        }
+      }
+
+      // ════════════════════════════════════════
+      // Delete
+      // ════════════════════════════════════════
+      function openDeleteModal(type, id, label) {
+        deleteTarget = { type, id };
+        document.getElementById("deleteWarningText").textContent =
+          "「" +
+          label +
+          "」(ID: " +
+          id +
+          ") を削除します。この操作は取り消せません。";
+        openModal("deleteModal");
+      }
+
+      async function confirmDelete() {
+        if (!deleteTarget) return;
+        const { type, id } = deleteTarget;
+        try {
+          await api("DELETE", "/" + type + "s/" + id);
+          toast("削除しました");
+          closeModal("deleteModal");
+          await initLoad();
+        } catch (e) {
+          toast(e.message, "error");
+        }
+        deleteTarget = null;
+      }
+
+      // ════════════════════════════════════════
+      // Modal helpers
+      // ════════════════════════════════════════
+      function openModal(id) {
+        document.getElementById(id).classList.add("open");
+      }
+      function closeModal(id) {
+        document.getElementById(id).classList.remove("open");
+      }
+      document.querySelectorAll(".modal-overlay").forEach((ov) => {
+        ov.addEventListener("click", (e) => {
+          if (e.target === ov) ov.classList.remove("open");
+        });
+      });
+
+      function esc(s) {
+        return String(s ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      initLoad();
+    </script>
+  </body>
+</html>
