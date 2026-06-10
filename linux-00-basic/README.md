@@ -12,8 +12,8 @@ bash vmstat_iostat.sh
 
 # ネットワーク系
 bash curl.sh
-bash netstat_ss.sh
-bash dig_nslookup.sh
+bash ss.sh
+bash dig.sh
 bash tcpdump.sh
 
 # ツール系
@@ -42,8 +42,8 @@ bash find.sh
 | ファイル | コマンド | サンプル数 |
 |---|---|---|
 | [`curl.sh`](curl.sh) | curl | 15 |
-| [`netstat_ss.sh`](netstat_ss.sh) | netstat / ss | 14 |
-| [`dig_nslookup.sh`](dig_nslookup.sh) | dig / nslookup | 16 |
+| [`ss.sh`](ss.sh) | ss | 12 |
+| [`dig.sh`](dig.sh) | dig | 12 |
 | [`tcpdump.sh`](tcpdump.sh) | tcpdump | 14 |
 
 ### 🔨 ツール系
@@ -184,10 +184,10 @@ APIのヘルスチェック・テスト・レスポンスタイム計測などSR
 
 ---
 
-### 🔌 [netstat_ss.sh](netstat_ss.sh)
+### 🔌 [ss.sh](ss.sh)
 
 ネットワーク接続・ポートの状態を確認するコマンドです。  
-`ss` は `netstat` の後継でより高速です。現代のLinuxでは `ss` が推奨されます。
+`netstat`（net-tools）は現代のLinuxでは非推奨のため、後継の `ss` に統一しています。
 
 | No | タイトル | 概要 |
 |---|---|---|
@@ -201,21 +201,19 @@ APIのヘルスチェック・テスト・レスポンスタイム計測などSR
 | 8 | バッファサイズ表示（`-m`） | `-m` で送受信バッファのサイズを表示する |
 | 9 | Unixドメインソケット | `ss -xlnp` でUnixドメインソケットの一覧を表示する |
 | 10 | TIME_WAIT確認 | `state time-wait` でTIME_WAIT状態の接続数を確認する |
-| 11 | netstat LISTENポート | `netstat -tlnp` でLISTENポートを表示する（未インストール時はssへフォールバック） |
-| 12 | netstat 状態集計 | `netstat -tan` のTCPステータスをawkで集計する |
-| 13 | ポート開放確認スクリプト | if文でポートのLISTEN状態を自動判定して結果を出力する |
-| 14 | 接続数の閾値監視 | ESTABLISHED接続数をカウントして閾値超えで警告を出力する |
+| 11 | ポート開放確認スクリプト | if文でポートのLISTEN状態を自動判定して結果を出力する |
+| 12 | 接続数の閾値監視 | ESTABLISHED接続数をカウントして閾値超えで警告を出力する |
 
 ---
 
-### 🌐 [dig_nslookup.sh](dig_nslookup.sh)
+### 🌐 [dig.sh](dig.sh)
 
 DNS名前解決を行うコマンドです。  
-障害時のDNS疎通確認や、キャッシュ・伝播状況の調査に使用します。
+`nslookup` はスクリプト利用では非推奨のため `dig` に統一しています。障害時のDNS疎通確認や、キャッシュ・伝播状況の調査に使用します。
 
 | No | タイトル | 概要 |
 |---|---|---|
-| 1 | dig 基本検索 | `dig example.com A` でAレコード（IPアドレス）を検索する |
+| 1 | 基本検索 | `dig example.com A` でAレコード（IPアドレス）を検索する |
 | 2 | 簡潔出力（`+short`） | `+short` でIPアドレスのみをシンプルに表示する |
 | 3 | 各レコードタイプ検索 | MX・NS・TXT・CNAMEなど各レコードタイプを指定して検索する |
 | 4 | 逆引きDNS | `-x IPアドレス` でPTRレコードを逆引きしてホスト名を取得する |
@@ -225,12 +223,8 @@ DNS名前解決を行うコマンドです。
 | 8 | 応答時間の計測 | `+stats` でQuery timeを確認してDNSサーバーの応答速度を計測する |
 | 9 | SOAレコード確認 | SOAレコードでゾーンの権威情報・シリアル番号を確認する |
 | 10 | トレースモード（`+trace`） | `+trace` でルートDNSからの名前解決の経路を段階的に表示する |
-| 11 | nslookup 基本検索 | `nslookup example.com` でIPアドレスを検索する（対話モードも使用可） |
-| 12 | nslookup 特定DNSサーバー | 第2引数にDNSサーバーを指定して問い合わせ先を変更する |
-| 13 | nslookup レコードタイプ指定 | `-type=MX` のようにレコードタイプを指定して検索する |
-| 14 | nslookup 逆引き | IPアドレスを引数に渡してホスト名を逆引きする |
-| 15 | 複数ドメインの応答時間比較 | for文で複数ドメインのDNS解決時間とIPアドレスを一括表示する |
-| 16 | DNSサーバー間の解決結果比較 | Google/Cloudflare/システムDNSの解決結果を並べて比較する |
+| 11 | 複数ドメインの応答時間比較 | for文で複数ドメインのDNS解決時間とIPアドレスを一括表示する |
+| 12 | DNSサーバー間の解決結果比較 | Google/Cloudflare/システムDNSの解決結果を並べて比較する |
 
 ---
 
