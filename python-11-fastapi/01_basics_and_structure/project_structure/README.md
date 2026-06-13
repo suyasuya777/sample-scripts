@@ -55,13 +55,11 @@ pip install -r requirements.txt
 
 # サーバーの起動
 python -m uvicorn main:app --reload
-```
 
 起動後、Swagger UI は `http://127.0.0.1:8000/docs` で確認できます。
 
 フロントエンドは `frontapp/index.html` を Live Server 等で開いてください（オリジン: `http://127.0.0.1:5500`）。
 
-```bash
 # 非アクティブ化
 deactivate
 
