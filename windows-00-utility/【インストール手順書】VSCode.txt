@@ -1,0 +1,26 @@
+■VSCode
+　
+1.VSCodeのインストール
+
+　1-1．以下のＵＲＬにアクセス
+　　https://code.visualstudio.com/
+
+　1-2.インストーラをダウンロード
+　　Download for Windows
+
+　1-3.途中で出るオプション画面は、以下を 必ずON
+　　「Add to PATH
+　　「Open with Code（右クリック）
+　　「Register Code as an editor for supported file types
+　　※ 迷ったら 全部チェックでOK
+
+　1-5.VSCodeのインストール確認
+　　code --version
+
+　　スタートメニュー → VSCode
+
+　1-6.日本語化の設定（その他必要に応じて拡張機能を）
+
+　　左の Extensions（四角アイコン）
+　　Japanese Language Pack for Visual Studio Code
+　　Install → 再起動
