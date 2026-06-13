@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import database
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-import database
 
 if TYPE_CHECKING:
     from models.user import User
@@ -28,10 +27,10 @@ class Item(database.Base):
     )
 
     user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id"),
+        ForeignKey("users.id")
     )
 
-    owner: Mapped["User"] = relationship(
+    owner: Mapped[User] = relationship(
         "User",
         back_populates="items"
     )

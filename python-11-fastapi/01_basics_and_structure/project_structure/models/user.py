@@ -1,10 +1,10 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
+import database
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-import database
 
 if TYPE_CHECKING:
     from models.item import Item
@@ -27,7 +27,7 @@ class User(database.Base):
         unique=True
     )
 
-    items: Mapped[list["Item"]] = relationship(
+    items: Mapped[list[Item]] = relationship(
         "Item",
         back_populates="owner",
         cascade="all, delete-orphan"
