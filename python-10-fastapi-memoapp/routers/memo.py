@@ -30,7 +30,7 @@ async def get_memos(
 ):
 
     memos = await memo_crud.get_memos(db_session)
-    return [memo_schema.Memo.model_validate(memo) for memo in memos]
+    return memos
 
 
 @router.get("/{id}", response_model=memo_schema.Memo)
@@ -42,7 +42,7 @@ async def get_memo_by_id(
     memo = await memo_crud.get_memo_by_id(db_session, id)
     if not memo:
         raise HTTPException(status_code=404, detail="メモが見つかりません")
-    return memo_schema.Memo.model_validate(memo)
+    return memo
 
 
 @router.put("/{id}", response_model=memo_schema.MemoResponse)
