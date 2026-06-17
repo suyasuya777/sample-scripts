@@ -1,9 +1,9 @@
-# 🗂️ project_structure（FastAPI + SQLite）
+# 🗂️ ユーザ・アイテム管理アプリ（FastAPI + SQLite）
 
 FastAPIの推奨フォルダ構成サンプルです。
 
 ```
-project_structure/
+python-11-fastapi-user-item-app/
 │
 ├── main.py            # エントリーポイント
 ├── config.py          # 環境変数管理（pydantic-settings）

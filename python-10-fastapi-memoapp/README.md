@@ -8,7 +8,7 @@ FastAPI と SQLAlchemy（非同期）を使ったメモ管理 REST API のサン
 ## 🗂️ ディレクトリ・ファイル構成
 
 ```
-source_project/
+python-10-fastapi-memoapp/
 ├── main.py                  # FastAPI エントリーポイント・CORS・ルーター登録
 ├── db.py                    # 非同期 DB エンジン・セッション管理
 ├── init_database.py         # DB 初期化スクリプト（テーブル作成）
