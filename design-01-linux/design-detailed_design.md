@@ -37,10 +37,16 @@
     - [▶️ 6.1 パスワードポリシー（`/etc/security/pwquality.conf`）](#️-61-パスワードポリシーetcsecuritypwqualityconf)
     - [▶️ 6.2 アカウントロック（`/etc/security/faillock.conf`）](#️-62-アカウントロックetcsecurityfaillockconf)
     - [▶️ 6.3 パスワード有効期限（`/etc/login.defs`）](#️-63-パスワード有効期限etclogindefs)
-  - [🔷 7. DNS設定パラメーター（BIND 9.16 / named）](#-7-dns設定パラメーターbind-916--named)
-    - [▶️ 7.1 `/etc/named.conf` 主要パラメーター](#️-71-etcnamedconf-主要パラメーター)
-    - [▶️ 7.2 DNSSEC設定（BIND 9.16 `dnssec-policy`）](#️-72-dnssec設定bind-916-dnssec-policy)
-    - [▶️ 7.3 ゾーンファイルパラメーター（正引き）](#️-73-ゾーンファイルパラメーター正引き)
+  - [🔷 7. DNS設定パラメーター](#-7-dns設定パラメーター)
+    - [▶️ 7.1 DNSコンテンツサーバー（BIND 9.16 / named）](#️-71-dnsコンテンツサーバーbind-916--named)
+      - [▶️ 7.1.1 `/etc/named.conf` 主要パラメーター](#️-711-etcnamedconf-主要パラメーター)
+      - [▶️ 7.1.2 DNSSEC設定（BIND 9.16 `dnssec-policy`）](#️-712-dnssec設定bind-916-dnssec-policy)
+      - [▶️ 7.1.3 ゾーンファイルパラメーター（正引き）](#️-713-ゾーンファイルパラメーター正引き)
+    - [▶️ 7.2 DNSキャッシュサーバー（unbound 1.16）](#️-72-dnsキャッシュサーバーunbound-116)
+      - [▶️ 7.2.1 `/etc/unbound/unbound.conf` 主要パラメーター](#️-721-etcunboundunboundconf-主要パラメーター)
+      - [▶️ 7.2.2 フォワード設定（`forward-zone`）](#️-722-フォワード設定forward-zone)
+      - [▶️ 7.2.3 ローカルゾーン設定（`local-zone` / `local-data`）](#️-723-ローカルゾーン設定local-zone--local-data)
+      - [▶️ 7.2.4 unbound systemd サービス設定](#️-724-unbound-systemd-サービス設定)
   - [🔷 8. Webサーバー設定パラメーター](#-8-webサーバー設定パラメーター)
     - [▶️ 8.1 Apache（`/etc/httpd/conf/httpd.conf`）](#️-81-apacheetchttpdconfhttpdconf)
     - [▶️ 8.2 SSL/TLS設定（`/etc/httpd/conf.d/ssl.conf`）](#️-82-ssltls設定etchttpdconfdsslconf)
@@ -380,11 +386,15 @@ faillock --user ★ユーザー名  # ロック状態確認
 
 ---
 
-## 🔷 7. DNS設定パラメーター（BIND 9.16 / named）
+## 🔷 7. DNS設定パラメーター
 
-### ▶️ 7.1 `/etc/named.conf` 主要パラメーター
+---
 
-**前提**：BIND **9.16**（RHEL9 AppStream）
+### ▶️ 7.1 DNSコンテンツサーバー（BIND 9.16 / named）
+
+#### ▶️ 7.1.1 `/etc/named.conf` 主要パラメーター
+
+**前提**：BIND **9.16**（RHEL9 AppStream）｜役割：**権威DNS（コンテンツサーバー）**
 
 | パラメーター名 | 設定値 | 備考 |
 |-------------|--------|------|
@@ -393,14 +403,14 @@ faillock --user ★ユーザー名  # ロック状態確認
 | `directory` | /var/named | ゾーンファイル格納ディレクトリ |
 | `dump-file` | /var/named/data/cache_dump.db | キャッシュダンプ先 |
 | `allow-query` | `{ localhost; ★内部NW; };` | クエリ許可元 |
-| `recursion` | yes（キャッシュDNS）/ no（権威DNS） | 再帰問い合わせ設定 |
-| `allow-recursion` | `{ 127.0.0.1; ★内部NW; };` | 再帰クエリ許可元（キャッシュDNSのみ） |
+| `recursion` | **no** | 権威DNSのため再帰問い合わせ禁止 |
+| `allow-recursion` | （設定不要） | `recursion no` のため不要 |
 | `dnssec-validation` | auto | DNSSEC検証（自動） |
 | `version` | `"none"` | バージョン情報非表示 |
 | `notify` | yes | ゾーン変更通知有効 |
 | `allow-transfer` | `{ ★セカンダリDNS-IP; };` | ゾーン転送許可先 |
 
-### ▶️ 7.2 DNSSEC設定（BIND 9.16 `dnssec-policy`）
+#### ▶️ 7.1.2 DNSSEC設定（BIND 9.16 `dnssec-policy`）
 
 BIND 9.16以降は `dnssec-policy` ディレクティブで自動管理が可能：
 
@@ -413,7 +423,7 @@ zone "example.com" {
 };
 ```
 
-### ▶️ 7.3 ゾーンファイルパラメーター（正引き）
+#### ▶️ 7.1.3 ゾーンファイルパラメーター（正引き）
 
 | レコードタイプ | 設定値例 | 備考 |
 |-------------|---------|------|
@@ -434,7 +444,86 @@ zone "example.com" {
 
 ---
 
-## 🔷 8. Webサーバー設定パラメーター
+### ▶️ 7.2 DNSキャッシュサーバー（unbound 1.16）
+
+#### ▶️ 7.2.1 `/etc/unbound/unbound.conf` 主要パラメーター
+
+**前提**：unbound **1.16**（RHEL9 AppStream）｜役割：**再帰リゾルバー（キャッシュDNS）**
+
+| パラメーター名 | 設定値 | 備考 |
+|-------------|--------|------|
+| `interface` | `★設定値` | リッスンIPアドレス（0.0.0.0 は非推奨） |
+| `port` | 53 | リッスンポート |
+| `do-ip4` | yes | IPv4有効 |
+| `do-ip6` | no | IPv6無効（環境に応じて変更） |
+| `do-udp` | yes | UDP有効 |
+| `do-tcp` | yes | TCP有効 |
+| `access-control` | `127.0.0.0/8 allow` | ローカルループバック許可 |
+| `access-control` | `★内部NW/24 allow` | 内部ネットワーク許可 |
+| `access-control` | `0.0.0.0/0 refuse` | それ以外は拒否 |
+| `hide-identity` | yes | サーバー識別情報を非表示 |
+| `hide-version` | yes | バージョン情報を非表示 |
+| `do-recursion` | yes | 再帰問い合わせ有効 |
+| `harden-glue` | yes | グルーレコードを厳格に検証 |
+| `harden-dnssec-stripped` | yes | DNSSECが剥ぎ取られたレスポンスを拒否 |
+| `val-permissive-mode` | no | DNSSEC検証を厳格化 |
+| `use-caps-for-id` | yes | クエリID偽装対策（0x20エンコーディング） |
+| `cache-max-ttl` | 86400 | キャッシュ最大TTL（秒） |
+| `cache-min-ttl` | 0 | キャッシュ最小TTL（秒） |
+| `prefetch` | yes | TTL期限前にキャッシュを先読み更新 |
+| `num-threads` | ★設定値（CPUコア数） | ワーカースレッド数 |
+| `so-rcvbuf` | 1m | 受信バッファサイズ |
+| `msg-cache-size` | 50m | メッセージキャッシュサイズ |
+| `rrset-cache-size` | 100m | RRsetキャッシュサイズ（msg-cacheの2倍推奨） |
+
+#### ▶️ 7.2.2 フォワード設定（`forward-zone`）
+
+内部ドメインの問い合わせはBIND（コンテンツサーバー）へフォワードする：
+
+```conf
+# 内部ドメインをBIND権威DNSへフォワード
+forward-zone:
+    name: "example.com"
+    forward-addr: ★BINDサーバーIP@53
+
+forward-zone:
+    name: "★内部ドメイン"
+    forward-addr: ★BINDサーバーIP@53
+
+# 外部ドメインは上位DNSへフォワード（またはルートヒント使用）
+forward-zone:
+    name: "."
+    forward-addr: 8.8.8.8       # Google DNS（例）
+    forward-addr: 1.1.1.1       # Cloudflare DNS（例）
+    forward-first: yes          # フォワード失敗時はルートヒントで再帰解決
+```
+
+#### ▶️ 7.2.3 ローカルゾーン設定（`local-zone` / `local-data`）
+
+```conf
+# ローカルゾーン（プライベートアドレスの逆引き保護）
+local-zone: "10.in-addr.arpa." nodefault
+local-zone: "168.192.in-addr.arpa." nodefault
+
+# スタブレコード例（unboundで直接解答する場合）
+local-data: "★hostname.example.com. A ★IP"
+local-data-ptr: "★IP ★hostname.example.com."
+```
+
+#### ▶️ 7.2.4 unbound systemd サービス設定
+
+| 項目 | 設定値 | 備考 |
+|------|--------|------|
+| サービス名 | `unbound.service` | |
+| 設定ファイル | `/etc/unbound/unbound.conf` | |
+| 追加設定ディレクトリ | `/etc/unbound/conf.d/` | `*.conf` を自動読み込み |
+| ログ出力先 | systemd journal（`use-syslog: yes`） | `/var/log/unbound/unbound.log` も可 |
+| 自動復旧 | `Restart=always` / `RestartSec=10` | systemd ドロップイン設定 |
+| SELinux | `unbound_t` ドメイン（デフォルトポリシーで動作） | `setsebool -P named_write_master_zones on` は不要 |
+
+---
+
+
 
 ### ▶️ 8.1 Apache（`/etc/httpd/conf/httpd.conf`）
 
@@ -1442,6 +1531,7 @@ sudo -l -U ★ユーザー名  # ユーザーのsudo権限確認
 | nginx | /etc/systemd/system/nginx.service.d/restart.conf | always | 10秒 | 5（60秒内） |
 | postfix | /etc/systemd/system/postfix.service.d/restart.conf | always | 10秒 | 5（60秒内） |
 | named | /etc/systemd/system/named.service.d/restart.conf | always | 10秒 | 5（60秒内） |
+| unbound | /etc/systemd/system/unbound.service.d/restart.conf | always | 10秒 | 5（60秒内） |
 | sshd | /etc/systemd/system/sshd.service.d/restart.conf | always | 5秒 | 5（60秒内） |
 | chronyd | /etc/systemd/system/chronyd.service.d/restart.conf | always | 30秒 | 5（60秒内） |
 

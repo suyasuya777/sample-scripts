@@ -58,7 +58,8 @@
 | パッケージ管理 | dnf（RHEL9系標準） | DNF 4.14 | yumコマンドはdnfへのエイリアス |
 | ログ管理 | rsyslog、systemd-journald | rsyslog 8.2102 / journald（systemd 252） | journald が一次ログ |
 | セキュリティ | SELinux、firewalld、nftables、SSH強化 | SELinux 3.5 / firewalld 1.2 / OpenSSH 8.7 | iptablesはnftablesバックエンドに移行 |
-| DNS | BIND（named） | BIND 9.16 | DNSSEC対応 |
+| DNSコンテンツサーバー | BIND（named） | BIND 9.16 | 権威DNS・ゾーン管理・DNSSEC対応 |
+| DNSキャッシュサーバー | unbound | unbound 1.16 | 再帰リゾルバー・フォワーダー・DNSSEC検証 |
 | Webサーバー | Apache httpd / Nginx | httpd 2.4.57 / Nginx 1.22 | TLS 1.3対応 |
 | プロキシ | Squid | Squid 5.5 | |
 | ファイル共有 | Samba / NFS | Samba 4.17 / NFS v4.2 | SMB3.1.1対応 |
@@ -132,7 +133,8 @@
 
 | 要件ID | サービス | バージョン（RHEL9） | 要件内容 | 優先度 |
 |--------|---------|------------------|---------|--------|
-| FR-SVC-001 | DNS（BIND） | BIND 9.16 | 権威DNSまたはキャッシュDNSとして動作しゾーン管理を行うこと | 必須 |
+| FR-SVC-001 | DNSコンテンツサーバー（BIND） | BIND 9.16 | 権威DNSとして動作しゾーン管理・DNSSEC署名を行うこと（`recursion no` で外部公開・内部権威） | 必須 |
+| FR-SVC-001b | DNSキャッシュサーバー（unbound） | unbound 1.16 | 再帰リゾルバーとして動作しクライアントへの名前解決を提供すること（`access-control` で内部NWのみ許可） | 必須 |
 | FR-SVC-002 | Apache / Nginx | httpd 2.4.57 / Nginx 1.22 | HTTP/HTTPSのWebサービスを提供すること（TLS 1.3対応） | 必須 |
 | FR-SVC-003 | Squid | Squid 5.5 | プロキシサービスを提供しURLフィルタリングを実施すること | 推奨 |
 | FR-SVC-004 | Samba | Samba 4.17 | SMB 3.1.1によるWindowsファイル共有を提供すること | 推奨 |

@@ -11,14 +11,14 @@ UserName = Annotated[
     Field(
         min_length=1,
         max_length=50,
-        description="ユーザー名"
+        description="ユーザ名"
     )
 ]
 
 UserEmail = Annotated[
     EmailStr,
     Field(
-        max_length=50,
+        max_length=254,
         description="メールアドレス"
     )
 ]
@@ -28,14 +28,14 @@ UserOptionalName = Annotated[
     Field(
         min_length=1,
         max_length=50,
-        description="ユーザー名（省略可）"
+        description="ユーザ名（省略可）"
     )
 ]
 
 UserOptionalEmail = Annotated[
-    EmailStr | None,
+    str | None,
     Field(
-        max_length=50,
+        max_length=254,
         description="メールアドレス（省略可）"
     )
 ]
@@ -47,7 +47,6 @@ UserItems = Annotated[
     )
 ]
 
-
 class UserBase(BaseModel):
     name: UserName
     email: UserEmail
@@ -58,12 +57,11 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
-    name: UserOptionalName = None
-    email: UserOptionalEmail = None
+    name: UserOptionalName
+    email: UserOptionalEmail
 
 
 class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
-
     id: int
     items: UserItems = Field(default_factory=list)

@@ -14,9 +14,8 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Sample Project Structure", lifespan=lifespan)
+app = FastAPI(title="user_items", lifespan=lifespan)
 
-# CORS設定
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:5500"],
@@ -27,3 +26,4 @@ app.add_middleware(
 
 app.include_router(user.router)
 app.include_router(item.router)
+

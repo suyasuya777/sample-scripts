@@ -7,24 +7,12 @@ from schemas.user import UserCreate, UserUpdate
 
 
 async def get_users(
-    db: AsyncSession
+    db: AsyncSession,
 ) -> list[User]:
-
     result = await db.execute(
         select(User).options(selectinload(User.items))
     )
     return result.scalars().all()
-
-
-async def get_user(
-    db: AsyncSession,
-    user_id: int
-) -> User | None:
-
-    result = await db.execute(
-        select(User).options(selectinload(User.items)).where(User.id == user_id)
-    )
-    return result.scalar_one_or_none()
 
 
 async def get_users_paged(
@@ -32,18 +20,26 @@ async def get_users_paged(
     skip: int = 0,
     limit: int = 100
 ) -> list[User]:
-
     result = await db.execute(
         select(User).options(selectinload(User.items)).offset(skip).limit(limit)
     )
     return result.scalars().all()
 
 
+async def get_user(
+    db: AsyncSession,
+    user_id: int
+) -> User:
+    result = await db.execute(
+        select(User).options(selectinload(User.items)).where(User.id == user_id)
+    )
+    return result.scalar_one_or_none()
+
+
 async def create_user(
     db: AsyncSession,
-    user_in: UserCreate
+    user_in: UserCreate,
 ) -> User:
-
     user = User(**user_in.model_dump())
     db.add(user)
     await db.commit()
@@ -53,10 +49,9 @@ async def create_user(
 
 async def patch_user(
     db: AsyncSession,
-    user_id: int,
-    user_in: UserUpdate
-) -> User | None:
-
+    user_in: UserUpdate,
+    user_id: int
+) -> User:
     result = await db.execute(
         select(User).options(selectinload(User.items)).where(User.id == user_id)
     )
@@ -74,7 +69,6 @@ async def delete_user(
     db: AsyncSession,
     user_id: int
 ) -> bool:
-
     result = await db.execute(
         select(User).where(User.id == user_id)
     )
@@ -84,3 +78,4 @@ async def delete_user(
     await db.delete(user)
     await db.commit()
     return True
+

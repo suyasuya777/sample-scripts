@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import database
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+import database
 
 if TYPE_CHECKING:
     from models.user import User
@@ -14,8 +15,7 @@ class Item(database.Base):
     __tablename__ = "items"
 
     id: Mapped[int] = mapped_column(
-        primary_key=True,
-        index=True
+        primary_key=True
     )
 
     title: Mapped[str] = mapped_column(
@@ -34,3 +34,4 @@ class Item(database.Base):
         "User",
         back_populates="items"
     )
+

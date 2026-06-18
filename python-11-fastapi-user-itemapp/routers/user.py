@@ -1,10 +1,12 @@
 from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from cruds import user as user_crud
 from database import get_db
 from schemas.user import UserCreate, UserResponse, UserUpdate
+
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -14,7 +16,6 @@ DBSession = Annotated[AsyncSession, Depends(get_db)]
 async def get_users(
     db: DBSession
 ):
-
     return await user_crud.get_users(db)
 
 
@@ -32,10 +33,9 @@ async def get_user(
     user_id: int,
     db: DBSession
 ):
-
     user = await user_crud.get_user(db, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="見つかりません")
     return user
 
 
@@ -44,20 +44,18 @@ async def create_user(
     user_in: UserCreate,
     db: DBSession
 ):
-
     return await user_crud.create_user(db, user_in)
 
 
 @router.patch("/{user_id}", response_model=UserResponse)
 async def patch_user(
-    user_id: int,
     user_in: UserUpdate,
+    user_id: int,
     db: DBSession
 ):
-
-    user = await user_crud.patch_user(db, user_id, user_in)
+    user = await user_crud.patch_user(db, user_in, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="見つかりません")
     return user
 
 
@@ -66,8 +64,7 @@ async def delete_user(
     user_id: int,
     db: DBSession
 ):
-
     deleted = await user_crud.delete_user(db, user_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="User not found")
-    return deleted
+        raise HTTPException(status_code=404, detail="見つかりません")
+    return True
