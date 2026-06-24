@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, ForeignKey
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-import database
+from database import Base
 
 if TYPE_CHECKING:
     from models.user import User
 
 
-class Item(database.Base):
+class Item(Base):
     __tablename__ = "items"
 
     id: Mapped[int] = mapped_column(
@@ -34,4 +34,3 @@ class Item(database.Base):
         "User",
         back_populates="items"
     )
-

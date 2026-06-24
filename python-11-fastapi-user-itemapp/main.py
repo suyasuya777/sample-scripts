@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import Base, engine
-from routers import item, user
+from routers import user, item
 
 
 @asynccontextmanager
@@ -14,7 +14,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="user_items", lifespan=lifespan)
+app = FastAPI(title="project structure", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,4 +26,3 @@ app.add_middleware(
 
 app.include_router(user.router)
 app.include_router(item.router)
-

@@ -1,8 +1,5 @@
-from __future__ import annotations
-
 from typing import Annotated
-
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 ItemTitle = Annotated[
@@ -17,8 +14,9 @@ ItemTitle = Annotated[
 ItemDescription = Annotated[
     str | None,
     Field(
+        min_length=1,
         max_length=255,
-        description="説明"
+        description="説明（省略可）"
     )
 ]
 
@@ -39,13 +37,7 @@ ItemOptionalTitle = Annotated[
     )
 ]
 
-ItemOptionalDescription = Annotated[
-    str | None,
-    Field(
-        max_length=255,
-        description="説明（省略可）"
-    )
-]
+ItemOptionalDescription = ItemDescription
 
 ItemOptionalUserId = Annotated[
     int | None,
@@ -67,9 +59,9 @@ class ItemCreate(ItemBase):
 
 
 class ItemUpdate(BaseModel):
-    title: ItemOptionalTitle
-    description: ItemOptionalDescription
-    user_id: ItemOptionalUserId
+    title: ItemOptionalTitle = None
+    description: ItemOptionalDescription = None
+    user_id: ItemOptionalUserId = None
 
 
 class ItemResponse(ItemBase):

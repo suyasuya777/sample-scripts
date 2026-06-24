@@ -7,16 +7,17 @@ from cruds import user as user_crud
 from database import get_db
 from schemas.user import UserCreate, UserResponse, UserUpdate
 
-
 router = APIRouter(prefix="/users", tags=["Users"])
 
 DBSession = Annotated[AsyncSession, Depends(get_db)]
+
 
 @router.get("", response_model=list[UserResponse])
 async def get_users(
     db: DBSession
 ):
-    return await user_crud.get_users(db)
+    users = await user_crud.get_users(db)
+    return users
 
 
 @router.get("/paged", response_model=list[UserResponse])
@@ -25,13 +26,14 @@ async def get_users_paged(
     skip: int = 0,
     limit: int = 100
 ):
-    return await user_crud.get_users_paged(db, skip=skip, limit=limit)
+    users = await user_crud.get_users_paged(db, skip=skip, limit=limit)
+    return users
 
 
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
-    user_id: int,
-    db: DBSession
+    db: DBSession,
+    user_id: int
 ):
     user = await user_crud.get_user(db, user_id)
     if not user:
@@ -44,7 +46,8 @@ async def create_user(
     user_in: UserCreate,
     db: DBSession
 ):
-    return await user_crud.create_user(db, user_in)
+    user = await user_crud.create_user(db, user_in)
+    return user
 
 
 @router.patch("/{user_id}", response_model=UserResponse)

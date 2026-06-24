@@ -11,7 +11,8 @@ async def get_items(
     result = await db.execute(
         select(Item)
     )
-    return result.scalars().all()
+    items = result.scalars().all()
+    return items
 
 
 async def get_items_paged(
@@ -22,7 +23,8 @@ async def get_items_paged(
     result = await db.execute(
         select(Item).offset(skip).limit(limit)
     )
-    return result.scalars().all()
+    items = result.scalars().all()
+    return items
 
 
 async def get_items_by_user(
@@ -32,17 +34,21 @@ async def get_items_by_user(
     result = await db.execute(
         select(Item).where(Item.user_id == user_id)
     )
-    return result.scalars().all()
+    items = result.scalars().all()
+    return items
 
 
 async def get_item(
     db: AsyncSession,
     item_id: int
-) -> Item:
+) -> Item | None:
     result = await db.execute(
         select(Item).where(Item.id == item_id)
     )
-    return result.scalar_one_or_none()
+    item = result.scalar_one_or_none()
+    if not item:
+        return None
+    return item
 
 
 async def create_item(
@@ -60,7 +66,7 @@ async def patch_item(
     db: AsyncSession,
     item_in: ItemUpdate,
     item_id: int
-) -> Item:
+) -> Item | None:
     result = await db.execute(
         select(Item).where(Item.id == item_id)
     )
@@ -69,7 +75,6 @@ async def patch_item(
         return None
     for key, value in item_in.model_dump(exclude_unset=True).items():
         setattr(item, key, value)
-    db.add(item)
     await db.commit()
     await db.refresh(item)
     return item
@@ -84,7 +89,7 @@ async def delete_item(
     )
     item = result.scalar_one_or_none()
     if not item:
-        return False 
+        return False
     await db.delete(item)
     await db.commit()
     return True

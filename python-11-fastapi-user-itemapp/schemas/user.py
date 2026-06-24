@@ -4,7 +4,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from schemas import item as item_schema
+from schemas.item import ItemResponse
 
 UserName = Annotated[
     str,
@@ -33,7 +33,7 @@ UserOptionalName = Annotated[
 ]
 
 UserOptionalEmail = Annotated[
-    str | None,
+    EmailStr | None,
     Field(
         max_length=254,
         description="メールアドレス（省略可）"
@@ -41,11 +41,12 @@ UserOptionalEmail = Annotated[
 ]
 
 UserItems = Annotated[
-    list[item_schema.ItemResponse],
+    list[ItemResponse],
     Field(
         description="所有アイテム一覧"
     )
 ]
+
 
 class UserBase(BaseModel):
     name: UserName
@@ -57,11 +58,12 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
-    name: UserOptionalName
-    email: UserOptionalEmail
+    name: UserOptionalName = None
+    email: UserOptionalEmail = None
 
 
 class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
+
     id: int
     items: UserItems = Field(default_factory=list)
