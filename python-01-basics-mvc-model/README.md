@@ -1,6 +1,6 @@
-# ranking_project 処理概要
+# 🍽️ ranking_project 処理概要
 
-## システム概要
+## 🗺️ システム概要
 
 レストランのランキングをCSVファイルで管理し、ロボットがユーザーと会話しながらレストランをおすすめするCLIアプリ。
 
@@ -44,7 +44,34 @@ ranking_project/
 
 ---
 
-## アーキテクチャ（MVC構成）
+## 🏗️ アーキテクチャ（MVC構成）
+
+MVC は「各レイヤーが**何を知ってよいか／知ってはいけないか**」で責務を分ける考え方。一般論としての分割指針は次のとおり。
+
+| レイヤー | 担当する責務 | 持ってはいけないもの |
+|---|---|---|
+| **Model** | 業務ロジック・データ・永続化（状態と業務ルール） | 画面表示・ユーザー入力（`print` / `input`）への依存 |
+| **View** | 受け取ったデータの描画・整形のみ | 業務ロジック・状態（自分で計算や判断をしない） |
+| **Controller** | 入力の受け取りと処理の交通整理（Model と View の仲介） | 業務ルールそのもの（肥大化させない） |
+
+分割時に意識する原則：
+
+1. **依存方向を一方向に保つ**。`Controller → Model / View` の向きだけにし、View は Model を参照しない／Model は View を知らない状態にする。
+2. **ビジネスルールは Model に集約**する（並び替え・集計・保存など）。いわゆる「fat model, thin controller」。
+3. **View は状態を持たない**。渡された値を文字列・画面に変換して出すだけにし、表示方法の差し替え（CLI → Web 等）が効くようにする。
+4. **Controller は薄く保つ**。「次に何をするか」という順序制御に徹し、ロジックは Model に委ねる。
+
+本プロジェクトへの当てはめ：
+
+- **Model** = `RankingModel` … CSV の読み書き（永続化）、`get_most_popular()` の並び替え、`increment()` の集計という業務ルールを担当。表示も入力も知らない、教科書的な Model。
+- **View** = `console.get_template()` … `templates/*.txt` を読み `string.Template` を返すだけ。状態もロジックも持たない純粋な表示担当。
+- **Controller** = `conversation.talk_about_restaurant()` … `RestaurantRobot` を生成し `hello → recomend → ask → thank` の順に呼ぶだけの、薄い交通整理役。
+
+> **厳密な MVC との差異（設計上の注意）**
+> `models/robot.py` の `RestaurantRobot` は `models/` 配下に置かれているが、実際には `input()` でユーザー入力を受け取り、`console`（View）を直接呼び、会話の進行も担っている。これは純粋な Model ではなく、**Controller と Model/View をつなぐ中間層（プレゼンター／アプリケーションサービス）**に近い。
+> より厳密に分けるなら、入力受付や会話フローの制御は Controller 側へ寄せ、`RestaurantRobot` は「`RankingModel` の操作」と「View の呼び出し」の調整役に専念させる整理になる。今回の規模では現状でも十分機能するが、**画面を Web 化する・自動テストを書く**段階になると、この入力／表示の責務が Model 寄りに混ざっている点が変更の起点になりやすい。
+
+下図は実際の依存関係（呼び出しの向き）。
 
 ```
 main.py
@@ -57,7 +84,7 @@ main.py
 
 ---
 
-## 処理フロー
+## 🔄 処理フロー
 
 ```
 START
@@ -93,9 +120,11 @@ END
 
 ## 📄 Python ソース詳細
 
-### `main.py` ─ エントリーポイント
+<a id="mainpy--エントリーポイント"></a>
 
-**インポートするモジュール**
+### 🚪 `main.py` ─ エントリーポイント
+
+**📥 インポートするモジュール**
 ```python
 from roboter.controller import conversation
 ```
@@ -107,9 +136,11 @@ from roboter.controller import conversation
 
 ---
 
-### `controller/conversation.py` ─ 会話フロー制御
+<a id="controllerconversationpy--会話フロー制御"></a>
 
-**インポートするモジュール**
+### 🎛️ `controller/conversation.py` ─ 会話フロー制御
+
+**📥 インポートするモジュール**
 ```python
 from roboter.models import robot
 ```
@@ -121,9 +152,11 @@ from roboter.models import robot
 
 ---
 
-### `models/robot.py` ─ `RestaurantRobot` クラス
+<a id="modelsrobotpy--restaurantrobot-クラス"></a>
 
-**インポートするモジュール**
+### 🤖 `models/robot.py` ─ `RestaurantRobot` クラス
+
+**📥 インポートするモジュール**
 ```python
 from roboter.models import ranking
 from roboter.views import console
@@ -140,9 +173,11 @@ from roboter.views import console
 
 ---
 
-### `models/ranking.py` ─ `RankingModel` クラス
+<a id="modelsrankingpy--rankingmodel-クラス"></a>
 
-**インポートするモジュール**
+### 📊 `models/ranking.py` ─ `RankingModel` クラス
+
+**📥 インポートするモジュール**
 ```python
 import collections  # defaultdict によるランキングデータの初期化
 import csv          # DictReader / DictWriter による CSV 読み書き
@@ -160,9 +195,11 @@ import os           # os.path.abspath, os.path.join による CSV パス解決
 
 ---
 
-### `views/console.py` ─ テンプレート読み込み（表示担当）
+<a id="viewsconsolepy--テンプレート読み込み表示担当"></a>
 
-**インポートするモジュール**
+### 🖥️ `views/console.py` ─ テンプレート読み込み（表示担当）
+
+**📥 インポートするモジュール**
 ```python
 import os      # os.path.abspath, os.path.join によるテンプレートパス解決
 import string  # string.Template によるプレースホルダー置換
@@ -175,7 +212,9 @@ import string  # string.Template によるプレースホルダー置換
 
 ---
 
-### `ranking.csv` ─ ランキングデータ（永続化）・データ構造
+<a id="rankingcsv--ランキングデータ永続化データ構造"></a>
+
+### 🗃️ `ranking.csv` ─ ランキングデータ（永続化）・データ構造
 
 | カラム | 内容 |
 |--------|------|
@@ -192,7 +231,9 @@ blue,1
 
 ---
 
-## テンプレートと変数
+<a id="テンプレートと変数"></a>
+
+## 🧩 テンプレートと変数
 
 | ファイル | 変数 | 用途 |
 |----------|------|------|
@@ -205,7 +246,7 @@ blue,1
 
 ---
 
-## 注意点・気になる箇所
+## ⚠️ 注意点・気になる箇所
 
 | 項目 | 内容 | 対応 |
 |------|------|------|
