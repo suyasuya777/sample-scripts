@@ -1,46 +1,72 @@
-# 🗂️ ユーザ・アイテム管理（FastAPI + SQLite）
+# 🛒 フリーマーケットアプリ（FastAPI + PostgreSQL + フロントエンド）
 
-FastAPIの推奨フォルダ構成サンプルです。
+## 📁 ディレクトリ・ファイル構成
 
 ```
-python-11-fastapi-user-itemapp/
+python-12-fastapi-fleamarket/
+│
+├── docker-compose.yml # 開発用DB環境（PostgreSQL + pgAdmin）
 │
 ├── main.py            # エントリーポイント
 ├── config.py          # 環境変数管理（pydantic-settings）
-├── database.py        # DB接続・セッション管理
+├── database.py        # DB接続・非同期セッション管理
+├── models.py          # SQLAlchemy ORMモデル
+├── schemas.py         # Pydanticスキーマ
+│
+├── frontend/          # フロントエンド（HTML/CSS/JS・ビルド不要）
+│   ├── index.html     # 画面構造（検索・出品一覧・各ダイアログ）
+│   ├── styles.css     # デザイン（値札モチーフ・レスポンシブ）
+│   ├── app.js         # APIクライアント・画面ロジック（JWT/CRUD/検索）
+│   └── README.md      # フロントエンド単体の説明
+│
+├── docker/            # Dockerボリュームマウント先
+│   ├── postgres/
+│   │   ├── init.d/    # 初回起動時の初期化SQL/スクリプト
+│   │   └── pgdata/    # PostgreSQL実データ（永続化）
+│   └── pgadmin/       # pgAdmin設定・接続情報（永続化）
 │
 ├── routers/           # エンドポイント定義
-│   ├── user.py        # /users エンドポイント
+│   ├── auth.py        # /auth エンドポイント
 │   └── item.py        # /items エンドポイント
 │
 ├── cruds/             # DB操作ロジック
-│   ├── user.py        # users テーブルのDB操作
+│   ├── auth.py        # 認証・ユーザーのDB操作
 │   └── item.py        # items テーブルのDB操作
 │
-├── schemas/           # Pydanticスキーマ
-│   ├── user.py        # UserCreate / UserUpdate / UserResponse
-│   └── item.py        # ItemCreate / ItemUpdate / ItemResponse
-│
-├── models/            # SQLAlchemy ORMモデル
-│   ├── user.py        # User ORMモデル（usersテーブル定義）
-│   └── item.py        # Item ORMモデル（itemsテーブル定義）
-│
-├── frontapp/          # フロントエンド（E2Eテスト・管理UI）
-│   ├── index.html     # メイン画面
-│   ├── app.js         # API呼び出しロジック
-│   └── styles.css     # スタイル
+├── migrations/        # Alembicマイグレーション
+│   ├── env.py
+│   ├── script.py.mako
+│   └── versions/
 │
 └── tests/             # pytestテスト
-    ├── test_user.py   # users エンドポイントのテスト
+    ├── conftest.py    # フィクスチャ・DIオーバーライド定義
     └── test_item.py   # items エンドポイントのテスト
 ```
 
+## 📋 ファイル一覧
+
+| ディレクトリ | ソース | 説明 |
+|---|---|---|
+| ルート | [docker-compose.yml](#docker-composeyml) | 開発用DB環境（PostgreSQL + pgAdmin） |
+| ルート | [main.py](#mainpy) | エントリーポイント・CORS・ミドルウェア設定 |
+| ルート | [config.py](#configpy) | 環境変数管理（pydantic-settings・lru_cache） |
+| ルート | [database.py](#databasepy) | 非同期DBエンジン・セッション管理 |
+| ルート | [models.py](#modelspy) | SQLAlchemy ORMモデル定義（Item・User） |
+| ルート | [schemas.py](#schemaspy) | Pydanticスキーマ・Enum・型エイリアス定義 |
+| `cruds/` | [auth.py](#crudsauthpy) | 認証・ユーザーのDB操作・JWT生成 |
+| `cruds/` | [item.py](#crudsitempy) | itemsテーブルのDB操作 |
+| `routers/` | [auth.py](#routersauthpy) | /auth エンドポイント定義 |
+| `routers/` | [item.py](#routersitempy) | /items エンドポイント定義 |
+| `migrations/` | [env.py](#migrationsenvpy) | Alembic非同期マイグレーション設定 |
+| `tests/` | [conftest.py](#testsconftestpy) | pytestフィクスチャ・DIオーバーライド定義 |
+| `frontend/` | [フロントエンド一式](#frontend) | HTML/CSS/JS 製のフリマ画面（別ディレクトリ・詳細は末尾セクション） |
+
 ---
 
-## 🛠️ セットアップ
+## 🚀 セットアップ
 
 ```bash
-# Python 3.11 にする
+# Python 3.11にする
 conda activate py311
 
 # 仮想環境を作成
@@ -50,65 +76,57 @@ python -m venv .venv
 source .venv/bin/activate   # Mac/Linux
 .venv\Scripts\activate      # Windows
 
-# インストール
+# 依存関係をインストール
 pip install -r requirements.txt
 
 # サーバーの起動
 python -m uvicorn main:app --reload
 
-起動後、Swagger UI は `http://127.0.0.1:8000/docs` で確認できます。
+# ブラウザを起動
+http://localhost:8000/docs
 
-フロントエンドは `frontapp/index.html` を Live Server 等で開いてください（オリジン: `http://127.0.0.1:5500`）。
 
-# 非アクティブ化
-deactivate
 
-# 仮想環境を削除
-.venv フォルダを削除
+# DB環境を起動（バックグラウンド）
+docker compose up -d
+
+# pgAdminにアクセス
+http://127.0.0.1:81
+# → メール: fastapi@example.com / パスワード: password でログイン
+# → 接続先ホストは postgres、ユーザー fastapiuser、DB fleamarket を指定
+
+# DB環境を停止
+docker compose down
 ```
 
----
-
-## 🧪 テスト実行
-
-```bash
-pytest tests/
-```
+> 画面（フロントエンド）の起動は、末尾の [🖥️ フロントエンド](#frontend) を参照してください。バックエンドの CORS が許可するのは `http://localhost:3000` のみのため、フロントは **3000 番**で配信します。
 
 ---
 
-## 🔌 エンドポイント一覧
+## 📄 Python ソース詳細
 
-### 👤 Users `/users`
+<a id="mainpy"></a>
+### 🚪 [main.py](main.py)　―　エントリーポイント・CORS・ミドルウェア設定
 
-| メソッド | パス | 説明 |
-|---|---|---|
-| GET | `/users` | ユーザー一覧取得 |
-| GET | `/users/paged?skip=0&limit=100` | ページネーション付き一覧取得 |
-| GET | `/users/{user_id}` | ユーザー1件取得 |
-| POST | `/users` | ユーザー作成 |
-| PATCH | `/users/{user_id}` | ユーザー部分更新 |
-| DELETE | `/users/{user_id}` | ユーザー削除 |
+**📥 インポート**
 
-### 📦 Items `/items`
+| モジュール | 用途 |
+|---|---|
+| `fastapi.FastAPI` | アプリケーションインスタンス生成 |
+| `fastapi.Request` | ミドルウェアでのリクエスト処理 |
+| `fastapi.middleware.cors.CORSMiddleware` | CORS設定 |
+| `routers.item`, `routers.auth` | ルーター登録 |
 
-| メソッド | パス | 説明 |
-|---|---|---|
-| GET | `/items` | アイテム一覧取得 |
-| GET | `/items/paged?skip=0&limit=100` | ページネーション付き一覧取得 |
-| GET | `/items/{item_id}` | アイテム1件取得 |
-| GET | `/items/user/{user_id}` | ユーザーに紐づくアイテム一覧取得 |
-| POST | `/items` | アイテム作成 |
-| PATCH | `/items/{item_id}` | アイテム部分更新 |
-| DELETE | `/items/{item_id}` | アイテム削除 |
+**📝 処理概要**
+
+アプリケーションのエントリーポイント。CORSMiddleware でフロントエンド（`http://localhost:3000`）からのアクセスを許可する。HTTPミドルウェアでレスポンスヘッダーに処理時間（`X-Process-Time`）を付与する。`item` / `auth` の各ルーターを `FastAPI` インスタンスに登録する。
 
 ---
 
-## 📁 ファイル一覧
+<a id="configpy"></a>
+### ⚙️ [config.py](config.py)　―　環境変数管理（pydantic-settings・lru_cache）
 
-### 📄 [config.py](config.py)
-
-**インポート**
+**📥 インポート**
 
 | モジュール | 用途 |
 |---|---|
@@ -116,430 +134,404 @@ pytest tests/
 | `pydantic_settings.SettingsConfigDict` | `.env` ファイル読み込み設定 |
 | `functools.lru_cache` | `Settings` インスタンスをキャッシュし再生成を防ぐ |
 
-**処理概要**
+**📝 処理概要**
 
 `BaseSettings` を継承した `Settings` クラスで環境変数（`secret_key`・`database_url`）を管理する。`get_settings()` に `@lru_cache` を付与し、アプリ全体で同一インスタンスを共有する。
 
 ---
 
-### 📄 [database.py](database.py)
+<a id="databasepy"></a>
+### 🗄️ [database.py](database.py)　―　非同期DBエンジン・セッション管理
 
-**インポート**
+**📥 インポート**
 
 | モジュール | 用途 |
 |---|---|
 | `sqlalchemy.ext.asyncio.create_async_engine` | 非同期DBエンジン生成 |
 | `sqlalchemy.ext.asyncio.async_sessionmaker` | 非同期セッションファクトリ生成 |
-| `sqlalchemy.orm.DeclarativeBase` | ORMモデルの基底クラス |
-| `config` | `config.get_settings()` 経由で `database_url` を取得 |
+| `sqlalchemy.orm.DeclarativeBase` | ORMモデルの基底クラス（SQLAlchemy 2.0スタイル） |
+| `config.get_settings` | `database_url` の取得 |
 
-**処理概要**
+**📝 処理概要**
 
-SQLAlchemy の非同期 `engine` / `async_session` / `Base` を生成・公開する。`get_db()` は非同期ジェネレータ関数で、FastAPI の `Depends` に渡すことでリクエストごとに非同期DBセッションを払い出す。
-
----
-
-### 📄 [models/user.py](models/user.py)
-
-**インポート**
-
-| モジュール | 用途 |
-|---|---|
-| `__future__.annotations` | 文字列形式の型注釈（前方参照）を有効化 |
-| `typing.TYPE_CHECKING` | 型チェック時のみ `Item` を import し循環参照を回避 |
-| `sqlalchemy.String` | `name` / `email` カラムの文字列長指定 |
-| `sqlalchemy.orm.Mapped`, `mapped_column`, `relationship` | ORMカラム・リレーション定義 |
-| `database.Base` | ORMモデルの基底クラス（`class User(Base)`） |
-| `models.item.Item`（型チェック時） | `items` リレーションの型注釈 |
-
-**処理概要**
-
-`users` テーブルに対応するORMモデル `User` を定義する。`id` / `name` / `email` の3カラムを持ち、`name` は `String(50)`、`email` は `String(254)` を指定する。`items` で `Item` への1対多リレーションを構成し、`cascade="all, delete-orphan"` によりUser削除時に紐づくItemを連鎖削除する。
-
-**主な記述の解説**
-
-| 記述 | 解説 |
-|---|---|
-| `from __future__ import annotations` | すべての型注釈を文字列として遅延評価する（PEP 563）。実行時に評価されないため、後方やTYPE_CHECKINGブロック内で定義した型（`list["Item"]` 等）を循環import無しで参照できる。 |
-| `from typing import TYPE_CHECKING` | 静的型チェック時のみ `True`、実行時は常に `False` となる定数。型ヒント専用のimportを分岐させるために使う。 |
-| `if TYPE_CHECKING:` | 型チェッカーだけが評価し実行時には通らないブロック。ここでは `Item` を型注釈用にのみimportし、`models.user` ⇔ `models.item` の循環importを回避する。 |
-| `back_populates="owner"` | `User.items` と `Item.owner` を相互に結び付ける双方向リレーション設定。一方を更新するともう一方にも反映される。 |
-| `cascade="all, delete-orphan"` | User削除時に紐づくItemを連鎖削除し、さらに `items` コレクションから外された（孤児化した）Itemも削除する。 |
+非同期対応の `engine` / `async_session` / `Base` を生成・公開する。`engine` は `create_async_engine` で生成し、`async_session` は `async_sessionmaker` で生成する。`expire_on_commit=False` により commit 後もオブジェクトの属性にアクセス可能にする。`Base` は SQLAlchemy 2.0スタイルの `DeclarativeBase` を継承して定義する。`get_db()` は非同期ジェネレータ関数で、FastAPI の `Depends` に渡すことでリクエストごとに非同期DBセッションを払い出し、`async with` により終了後に確実にクローズする。データベースURLには非同期ドライバ（PostgreSQLの場合 `postgresql+asyncpg`）を使用する。
 
 ---
 
-### 📄 [models/item.py](models/item.py)
+<a id="modelspy"></a>
+### 🧱 [models.py](models.py)　―　SQLAlchemy ORMモデル定義（Item・User）
 
-**インポート**
+**📥 インポート**
 
 | モジュール | 用途 |
 |---|---|
-| `__future__.annotations` | 文字列形式の型注釈（前方参照）を有効化 |
-| `typing.TYPE_CHECKING` | 型チェック時のみ `User` を import し循環参照を回避 |
-| `sqlalchemy.String`, `ForeignKey` | 文字列長指定・外部キー制約 |
-| `sqlalchemy.orm.Mapped`, `mapped_column`, `relationship` | ORMカラム・リレーション定義 |
-| `database.Base` | ORMモデルの基底クラス（`class Item(Base)`） |
-| `models.user.User`（型チェック時） | `owner` リレーションの型注釈 |
+| `sqlalchemy.orm.Mapped` | カラム・リレーションの型アノテーション |
+| `sqlalchemy.orm.mapped_column` | 型付きカラム定義（SQLAlchemy 2.0スタイル） |
+| `sqlalchemy.orm.relationship` | テーブル間リレーション定義 |
+| `sqlalchemy.String`, `Enum`, `ForeignKey` | カラム型・外部キー定義 |
+| `database.Base` | ORMモデルの基底クラス |
+| `schemas.ItemStatus` | ItemStatusのEnumをカラム型に使用 |
 
-**処理概要**
+**📝 処理概要**
 
-`items` テーブルに対応するORMモデル `Item` を定義する。`id` / `title` / `description` / `user_id` の4カラムを持ち、`title` は `String(50)`、`description` は `String(255)`、`user_id` は `ForeignKey("users.id")` で `users` を参照する。`owner` で `User` への多対1リレーションを構成し、`User.items` と `back_populates` で対をなす。
+`items` / `users` テーブルに対応するORMモデルを定義する。SQLAlchemy 2.0スタイルの `Mapped` + `mapped_column` を使用する。
 
-**主な記述の解説**
+`Item` モデルは `id` / `name` / `price` / `description` / `status` / `created_at` / `updated_at` / `user_id` のカラムを持ち、`user_id` は `ForeignKey("users.id", ondelete="CASCADE")` で `users` テーブルを参照する。`user: Mapped["User"]` により多対1の逆参照を構成する。
 
-| 記述 | 解説 |
-|---|---|
-| `from __future__ import annotations` | すべての型注釈を文字列として遅延評価する（PEP 563）。実行時に評価されないため、TYPE_CHECKINGブロック内で定義した型（`"User"` 等）を循環import無しで参照できる。 |
-| `from typing import TYPE_CHECKING` | 静的型チェック時のみ `True`、実行時は常に `False` となる定数。型ヒント専用のimportを分岐させるために使う。 |
-| `if TYPE_CHECKING:` | 型チェッカーだけが評価し実行時には通らないブロック。ここでは `User` を型注釈用にのみimportし、`models.item` ⇔ `models.user` の循環importを回避する。 |
-| `back_populates="items"` | `Item.owner` と `User.items` を相互に結び付ける双方向リレーション設定。User側の `back_populates="owner"` と対をなす。 |
+`User` モデルは `id` / `username` / `password` / `salt` / `created_at` / `updated_at` のカラムを持ち、`items: Mapped[list["Item"]]` により1人のUserが複数のItemを所有する1対多リレーションを構成する。
 
 ---
 
-### 📄 [schemas/user.py](schemas/user.py)
+<a id="schemaspy"></a>
+### 📐 [schemas.py](schemas.py)　―　Pydanticスキーマ・Enum・型エイリアス定義
 
-**インポート**
+**📥 インポート**
 
 | モジュール | 用途 |
 |---|---|
-| `__future__.annotations` | 文字列形式の型注釈（前方参照）を有効化 |
-| `typing.Annotated` | 型エイリアスへの `Field` 付与 |
-| `pydantic.BaseModel`, `ConfigDict`, `EmailStr`, `Field` | スキーマ定義・ORM変換設定・メール検証・バリデーション |
-| `schemas.item.ItemResponse` | `UserItems` で所有アイテムの型として参照 |
+| `pydantic.BaseModel` | スキーマ基底クラス |
+| `pydantic.Field` | バリデーション制約・サンプル値の付与 |
+| `pydantic.ConfigDict` | ORM連携設定（`from_attributes=True`） |
+| `enum.Enum` | `ItemStatus` の列挙型定義 |
+| `typing.Annotated` | 型エイリアス（`ItemId`・`ItemName` 等）への制約付与 |
 
-**型エイリアス一覧**
+**📝 処理概要**
 
-| エイリアス | 型 | バリデーション |
-|---|---|---|
-| `UserName` | `str` | `min_length=1`, `max_length=50` |
-| `UserEmail` | `EmailStr` | `max_length=254` |
-| `UserOptionalName` | `str \| None` | `min_length=1`, `max_length=50` |
-| `UserOptionalEmail` | `EmailStr \| None` | `max_length=254` |
-| `UserItems` | `list[ItemResponse]` | （所有アイテム一覧） |
+アプリ全体のPydanticスキーマを一元管理する。`ItemStatus` Enumで `ON_SALE` / `SOLD_OUT` を定義する。型エイリアス（`ItemId`, `ItemName`, `ItemPrice` 等）でバリデーション制約を共通化し、各スキーマクラスで再利用する。
 
-**スキーマ一覧**
+スキーマ一覧：
 
 | クラス | 用途 |
 |---|---|
-| `UserBase` | `name`・`email` の共通フィールド定義 |
-| `UserCreate` | POST リクエストボディ（UserBase をそのまま継承） |
-| `UserUpdate` | PATCH リクエストボディ（全フィールド Optional） |
-| `UserResponse` | レスポンス（`id`・`items` を追加） |
-
-**処理概要**
-
-各フィールドは `Annotated` + `Field` の型エイリアスで定義し、バリデーションルールを一元管理する。`UserResponse` は `model_config = ConfigDict(from_attributes=True)` でORMオブジェクトからの変換を有効化し、所有アイテムを `items: UserItems`（`Field(default_factory=list)`）として含む。
-
-**主な記述の解説**
-
-| 記述 | 解説 |
-|---|---|
-| `model_config = ConfigDict(from_attributes=True)` | 辞書だけでなくORMオブジェクトの属性からもインスタンス生成を許可する設定。`UserResponse.model_validate(user_orm)` のように `.id` / `.name` 等を読み取って変換できる（Pydantic v1 の `orm_mode` に相当）。 |
-| `default_factory=list` | `items` の既定値をインスタンス生成のたびに `list()` を呼んで生成する。各インスタンスが独立した空リストを持ち、ミュータブルなデフォルト値が共有される問題を防ぐ。 |
+| `ItemBase` | アイテム共通フィールド（`name` / `price` / `description`）の基底スキーマ |
+| `ItemCreate` | アイテム作成リクエスト（`ItemBase` を継承） |
+| `ItemUpdate` | アイテム更新リクエスト（全フィールド省略可） |
+| `ItemResponse` | アイテムレスポンス（`ItemBase` を継承・`from_attributes=True`） |
+| `UserCreate` | ユーザー作成リクエスト |
+| `UserResponse` | ユーザーレスポンス（`from_attributes=True`） |
+| `Token` | JWTトークンレスポンス |
+| `DecodedToken` | JWTデコード結果（`username` / `user_id`） |
 
 ---
 
-### 📄 [schemas/item.py](schemas/item.py)
+<a id="crudsauthpy"></a>
+### 🔐 [cruds/auth.py](cruds/auth.py)　―　認証・ユーザーのDB操作・JWT生成
 
-**インポート**
+**📥 インポート**
 
 | モジュール | 用途 |
 |---|---|
-| `typing.Annotated` | 型エイリアスへの `Field` 付与 |
-| `pydantic.BaseModel`, `ConfigDict`, `Field` | スキーマ定義・ORM変換設定・バリデーション |
+| `base64`, `hashlib`, `os` | salt生成・PBKDF2によるパスワードハッシュ化 |
+| `sqlalchemy.ext.asyncio.AsyncSession` | 非同期DBセッション型 |
+| `sqlalchemy.select` | SQLAlchemy 2.0スタイルのSELECT文生成 |
+| `sqlalchemy.exc.IntegrityError` | username重複時の例外捕捉 |
+| `fastapi.Depends`, `HTTPException`, `status` | DI・認証エラー応答 |
+| `fastapi.security.OAuth2PasswordBearer` | OAuth2トークン取得スキーマ |
+| `jose.jwt`, `JWTError` | JWTエンコード・デコード |
+| `schemas.UserCreate`, `DecodedToken` | 入力・出力スキーマ |
+| `models.User` | usersテーブルのORMモデル |
+| `config.get_settings` | `secret_key` の取得 |
 
-**型エイリアス一覧**
+**📝 処理概要**
 
-| エイリアス | 型 | バリデーション |
+認証・ユーザー管理に関するDB操作と認証ロジックを提供する。
+
+| 関数 | 種別 | 処理 |
 |---|---|---|
-| `ItemTitle` | `str` | `min_length=1`, `max_length=50` |
-| `ItemDescription` | `str \| None` | `min_length=1`, `max_length=255` |
-| `ItemUserId` | `int` | `gt=0` |
-| `ItemOptionalTitle` | `str \| None` | `min_length=1`, `max_length=50` |
-| `ItemOptionalDescription` | `str \| None` | `min_length=1`, `max_length=255` |
-| `ItemOptionalUserId` | `int \| None` | `gt=0` |
-
-**スキーマ一覧**
-
-| クラス | 用途 |
-|---|---|
-| `ItemBase` | `title`・`description`・`user_id` の共通フィールド定義 |
-| `ItemCreate` | POST リクエストボディ（ItemBase をそのまま継承） |
-| `ItemUpdate` | PATCH リクエストボディ（全フィールド Optional） |
-| `ItemResponse` | レスポンス（`id` を追加） |
-
-**処理概要**
-
-各フィールドは `Annotated` + `Field` の型エイリアスで定義し、バリデーションルールを一元管理する。`ItemBase`（`title` / `description` / `user_id`）を基底に `ItemCreate` / `ItemUpdate` / `ItemResponse` を派生させ、`ItemResponse` は `model_config = ConfigDict(from_attributes=True)` でORMオブジェクトからの変換を有効化する。
-
-**主な記述の解説**
-
-| 記述 | 解説 |
-|---|---|
-| `model_config = ConfigDict(from_attributes=True)` | 辞書だけでなくORMオブジェクトの属性からもインスタンス生成を許可する設定。`ItemResponse.model_validate(item_orm)` のように `.id` / `.title` 等を読み取って変換できる（Pydantic v1 の `orm_mode` に相当）。 |
+| `create_user` | `async def` | saltを生成しPBKDF2でパスワードをハッシュ化してUserを作成・保存 |
+| `authenticate_user` | `async def` | `select(User)` でユーザーを取得しパスワード検証 |
+| `create_access_token` | `def` | JWTトークンを生成（DB不使用） |
+| `get_current_user` | `def` | JWTをデコードして `DecodedToken` を返す（DB不使用） |
 
 ---
 
-### 📄 [cruds/user.py](cruds/user.py)
+<a id="crudsitempy"></a>
+### 📦 [cruds/item.py](cruds/item.py)　―　itemsテーブルのDB操作
 
-**インポート**
+**📥 インポート**
 
 | モジュール | 用途 |
 |---|---|
-| `sqlalchemy.select` | SELECT 文の構築 |
-| `sqlalchemy.ext.asyncio.AsyncSession` | 非同期DBセッションの型注釈 |
-| `sqlalchemy.orm.selectinload` | `items` の事前ロード（N+1回避） |
-| `models.user.User` | 操作対象のORMモデル |
-| `schemas.user.UserCreate`, `UserUpdate` | 入力スキーマの型注釈 |
+| `sqlalchemy.ext.asyncio.AsyncSession` | 非同期DBセッション型 |
+| `sqlalchemy.select` | SQLAlchemy 2.0スタイルのSELECT文生成 |
+| `schemas.ItemCreate`, `ItemUpdate` | 入力スキーマ |
+| `models.Item` | itemsテーブルのORMモデル |
 
-**関数一覧**
+**📝 処理概要**
 
-| 関数 | 説明 |
+`items` テーブルに対する非同期DB操作関数を提供する。全関数は `async def` で定義し、DB操作には `await` を使用する。
+
+| 関数 | 処理 |
 |---|---|
-| `get_users` | 全ユーザー取得（items を `selectinload`） |
-| `get_user` | id で1件取得（items を `selectinload`） |
-| `get_users_paged` | ページネーション付き取得（items を `selectinload`） |
-| `create_user` | ユーザー作成 |
-| `patch_user` | 部分更新（`exclude_unset=True` 使用） |
-| `delete_user` | 削除（成功: `True` / 未存在: `False`） |
-
-**処理概要**
-
-`users` テーブルに対する非同期CRUD操作を提供する。一覧・単件取得系は `selectinload(User.items)` で関連アイテムを事前ロードし、`create_user` / `patch_user` は更新後に `refresh(["items"])` で関連を再取得する。`patch_user` は `exclude_unset=True` で送信された項目のみを反映し、`delete_user` は対象の有無を真偽値（成功: `True` / 未存在: `False`）で返す。
-
-**主な記述の解説**
-
-| 記述 | 解説 |
-|---|---|
-| `selectinload(User.items)` | 関連 `items` を別クエリ（`IN (...)`）でまとめて事前ロードする eager loading 戦略。N+1問題を避け、非同期セッションでも遅延ロードに頼らず関連へアクセスできる。 |
-| `user = User(**user_in.model_dump())` | Pydantic入力モデルを辞書化し、キーワード引数として展開して `User` ORMインスタンスを生成する（`name=...`, `email=...`）。 |
-| `for key, value in user_in.model_dump(exclude_unset=True).items(): setattr(user, key, value)` | 明示的に指定された項目だけを取り出し（`exclude_unset=True`）、既存 `user` オブジェクトへ順に代入する。未送信フィールドは現在値を保持し、PATCH の部分更新を実現する。 |
-| `await db.refresh(user, ["items"])` | commit後にDBから `user` を再取得し、特に `items` リレーションを最新化する。返却オブジェクトが最新の関連データを持つようにする。 |
+| `get_items` | 全アイテムを取得 |
+| `get_items_by_name` | `name` の部分一致（`LIKE`）で検索 |
+| `get_item` | `id` と `user_id` で絞り込んで1件取得 |
+| `create_item` | 新規アイテムを作成・`await db.commit()` |
+| `update_item` | `await get_item` で取得後 `exclude_unset=True` のフィールドのみ更新・`await db.commit()` |
+| `delete_item` | `await get_item` で取得後削除・`await db.commit()`（成功時 `True` を返す） |
 
 ---
 
-### 📄 [cruds/item.py](cruds/item.py)
+<a id="routersauthpy"></a>
+### 🔑 [routers/auth.py](routers/auth.py)　―　/auth エンドポイント定義
 
-**インポート**
-
-| モジュール | 用途 |
-|---|---|
-| `sqlalchemy.select` | SELECT 文の構築 |
-| `sqlalchemy.ext.asyncio.AsyncSession` | 非同期DBセッションの型注釈 |
-| `models.item.Item` | 操作対象のORMモデル |
-| `schemas.item.ItemCreate`, `ItemUpdate` | 入力スキーマの型注釈 |
-
-**関数一覧**
-
-| 関数 | 説明 |
-|---|---|
-| `get_items` | 全アイテム取得 |
-| `get_item` | id で1件取得 |
-| `get_items_by_user` | user_id で絞り込み取得 |
-| `get_items_paged` | ページネーション付き取得 |
-| `create_item` | アイテム作成（`user_id` はリクエストボディに含む） |
-| `patch_item` | 部分更新（`exclude_unset=True` 使用） |
-| `delete_item` | 削除（成功: `True` / 未存在: `False`） |
-
-**処理概要**
-
-`items` テーブルに対する非同期CRUD操作を提供する。`get_items_by_user` は `user_id` で絞り込み取得する（取得系で `selectinload` は使用しない）。`patch_item` は `exclude_unset=True` で送信された項目のみを反映し、`delete_item` は対象の有無を真偽値（成功: `True` / 未存在: `False`）で返す。
-
-**主な記述の解説**
-
-| 記述 | 解説 |
-|---|---|
-| `item = Item(**item_in.model_dump())` | Pydantic入力モデルを辞書化し、キーワード引数として展開して `Item` ORMインスタンスを生成する（`title=...`, `description=...`, `user_id=...`）。 |
-| `for key, value in item_in.model_dump(exclude_unset=True).items(): setattr(item, key, value)` | 明示的に指定された項目だけを取り出し（`exclude_unset=True`）、既存 `item` オブジェクトへ順に代入する。未送信フィールドは現在値を保持し、PATCH の部分更新を実現する。 |
-| `await db.refresh(item)` | commit後にDBから `item` を再取得し、行のカラム値を最新化する（リレーション未指定。Itemは事前ロード対象を持たないため列のみ更新）。 |
-
----
-
-### 📄 [routers/user.py](routers/user.py)
-
-**インポート**
+**📥 インポート**
 
 | モジュール | 用途 |
 |---|---|
-| `typing.Annotated` | `DBSession` 依存性注入の型定義 |
-| `fastapi.APIRouter`, `Depends`, `HTTPException` | ルーター定義・DI・404応答 |
-| `sqlalchemy.ext.asyncio.AsyncSession` | 非同期DBセッションの型注釈 |
-| `cruds.user`（`user_crud`） | DB操作ロジックの呼び出し |
-| `database.get_db` | DBセッション払い出し依存関数 |
-| `schemas.user.UserCreate`, `UserResponse`, `UserUpdate` | リクエスト／レスポンススキーマ |
+| `fastapi.APIRouter` | ルーター定義 |
+| `fastapi.Depends`, `HTTPException`, `status` | DI・認証/重複エラー応答 |
+| `fastapi.security.OAuth2PasswordRequestForm` | ログインフォームデータ取得 |
+| `sqlalchemy.exc.IntegrityError` | username重複（409）の判定 |
+| `sqlalchemy.ext.asyncio.AsyncSession` | 非同期DBセッション型 |
+| `database.get_db` | 非同期DBセッション取得ジェネレータ |
+| `cruds.auth` | 認証・ユーザーのDB操作関数 |
+| `schemas.UserCreate`, `UserResponse`, `Token` | リクエスト・レスポンスのスキーマ |
 
-**エンドポイント一覧**
+**📝 処理概要**
 
-| メソッド | パス | crud関数 |
+`/auth` プレフィックスの認証エンドポイントを定義する。
+
+| エンドポイント | メソッド | 処理 |
 |---|---|---|
-| GET | `/users` | `get_users` |
-| GET | `/users/paged` | `get_users_paged` |
-| GET | `/users/{user_id}` | `get_user` |
-| POST | `/users` | `create_user` |
-| PATCH | `/users/{user_id}` | `patch_user` |
-| DELETE | `/users/{user_id}` | `delete_user` |
-
-**処理概要**
-
-`DBSession`（`Annotated[AsyncSession, Depends(get_db)]`）を定義し、各ハンドラで共有する。未存在リソースへのアクセスには `HTTPException(status_code=404)` を返す。ルート定義順は `/paged` → `/{user_id}` とし、パスパラメータとの競合を回避している。
-
-**主な記述の解説**
-
-| 記述 | 解説 |
-|---|---|
-| `DBSession = Annotated[AsyncSession, Depends(get_db)]` | 型（`AsyncSession`）とFastAPIの依存性（`Depends(get_db)`）を束ねた再利用可能な型エイリアス。各ハンドラで `db: DBSession` と書くだけでリクエストごとのDBセッションが注入され、`Depends(get_db)` の重複記述を省ける。 |
+| `/auth/signup` | POST | `await auth_cruds.create_user()` でユーザー作成（成功時 `201`、username重複時は `IntegrityError` を捕捉して `409 Conflict`） |
+| `/auth/login` | POST | `OAuth2PasswordRequestForm` で受け取り `await auth_cruds.authenticate_user()` で認証後、有効期限20分のJWTを返す（失敗時 `401`） |
 
 ---
 
-### 📄 [routers/item.py](routers/item.py)
+<a id="routersitempy"></a>
+### 🛣️ [routers/item.py](routers/item.py)　―　/items エンドポイント定義
 
-**インポート**
+**📥 インポート**
 
 | モジュール | 用途 |
 |---|---|
-| `typing.Annotated` | `DBSession` 依存性注入の型定義 |
-| `fastapi.APIRouter`, `Depends`, `HTTPException` | ルーター定義・DI・404応答 |
-| `sqlalchemy.ext.asyncio.AsyncSession` | 非同期DBセッションの型注釈 |
-| `cruds.item`（`item_crud`） | DB操作ロジックの呼び出し |
-| `database.get_db` | DBセッション払い出し依存関数 |
-| `schemas.item.ItemCreate`, `ItemResponse`, `ItemUpdate` | リクエスト／レスポンススキーマ |
+| `fastapi.APIRouter` | ルーター定義 |
+| `fastapi.Depends`, `Path`, `Query`, `HTTPException`, `status` | DI・パスパラメータ・クエリパラメータ・エラー応答 |
+| `sqlalchemy.ext.asyncio.AsyncSession` | 非同期DBセッション型 |
+| `database.get_db` | 非同期DBセッション取得ジェネレータ |
+| `cruds.item`, `cruds.auth` | DB操作・認証関数 |
+| `schemas.ItemCreate`, `ItemUpdate`, `ItemResponse`, `DecodedToken` | リクエスト・レスポンスのスキーマ |
 
-**エンドポイント一覧**
+**📝 処理概要**
 
-| メソッド | パス | crud関数 |
-|---|---|---|
-| GET | `/items` | `get_items` |
-| GET | `/items/paged` | `get_items_paged` |
-| GET | `/items/user/{user_id}` | `get_items_by_user` |
-| GET | `/items/{item_id}` | `get_item` |
-| POST | `/items` | `create_item` |
-| PATCH | `/items/{item_id}` | `patch_item` |
-| DELETE | `/items/{item_id}` | `delete_item` |
+`/items` プレフィックスのエンドポイントを定義する。`UserDependency`（`Depends(auth_cruds.get_current_user)`）により認証済みユーザーのみアクセス可能なエンドポイントを制御する。
 
-**処理概要**
+| エンドポイント | メソッド | 認証 | 処理 |
+|---|---|---|---|
+| `/items` | GET | 不要 | 全アイテム一覧取得。`?name=` クエリパラメータ（2〜20文字）を付けると名前で部分一致検索 |
+| `/items/{item_id}` | GET | 必要 | IDで1件取得（自分のアイテムのみ・該当なしは `404`） |
+| `/items` | POST | 必要 | アイテム作成（`201`・`user_id` はトークンから付与） |
+| `/items/{item_id}` | PUT | 必要 | アイテム更新（該当なしは `404`） |
+| `/items/{item_id}` | DELETE | 必要 | アイテム削除（成功時 `bool` を返す・該当なしは `404`） |
 
-`DBSession`（`Annotated[AsyncSession, Depends(get_db)]`）を定義し、各ハンドラで共有する。未存在リソースへのアクセスには `HTTPException(status_code=404)` を返す。ルート定義順は `/paged` → `/user/{user_id}` → `/{item_id}` とし、パスパラメータとの競合を回避している。
-
-**主な記述の解説**
-
-| 記述 | 解説 |
-|---|---|
-| `DBSession = Annotated[AsyncSession, Depends(get_db)]` | 型（`AsyncSession`）とFastAPIの依存性（`Depends(get_db)`）を束ねた再利用可能な型エイリアス。各ハンドラで `db: DBSession` と書くだけでリクエストごとのDBセッションが注入され、`Depends(get_db)` の重複記述を省ける。 |
+> **補足**：名前検索は独立したエンドポイントではなく、`GET /items` の `name` クエリパラメータで処理される（`get_items` ハンドラ内で `name` の有無により `item_cruds.get_items` / `get_items_by_name` を切り替える）。
 
 ---
 
-### 📄 [main.py](main.py)
+<a id="migrationsenvpy"></a>
+### 🔄 [migrations/env.py](migrations/env.py)　―　Alembic非同期マイグレーション設定
 
-**インポート**
+**📥 インポート**
 
 | モジュール | 用途 |
 |---|---|
-| `contextlib.asynccontextmanager` | `lifespan` コンテキストマネージャ定義 |
-| `fastapi.FastAPI` | アプリケーションインスタンス生成 |
-| `fastapi.middleware.cors.CORSMiddleware` | CORSミドルウェア登録 |
-| `database.Base`, `database.engine` | テーブル自動作成に使用 |
-| `routers.item`, `routers.user` | ルーター登録 |
+| `asyncio` | 非同期処理の実行 |
+| `sqlalchemy.ext.asyncio.async_engine_from_config` | 非同期エンジン生成 |
+| `sqlalchemy.pool` | NullPool指定（マイグレーション時の接続管理） |
+| `alembic.context` | Alembic設定・マイグレーション実行 |
+| `models.Base` | autogenerateのためのメタデータ参照 |
 
-**処理概要**
+**📝 処理概要**
 
-アプリケーションのエントリーポイント。`user` / `item` の各ルーターを `FastAPI` インスタンスに登録する。`lifespan` で起動時に `Base.metadata.create_all` を実行しテーブルを自動作成する。CORS設定で `http://127.0.0.1:5500` からのアクセスを許可する。
+Alembicの非同期マイグレーション設定。`run_migrations_offline()` はDBに接続せずSQLをファイル出力するオフラインモード（同期）。`run_migrations_online()` は `async_engine_from_config` で非同期エンジンを生成し、`connection.run_sync(do_run_migrations)` で同期的にマイグレーションを実行する。`asyncio.run()` で非同期関数をエントリーポイントから呼び出す。
 
-**主な記述の解説**
+---
 
-| 記述 | 解説 |
+<a id="testsconftestpy"></a>
+### 🧪 [tests/conftest.py](tests/conftest.py)　―　pytestフィクスチャ・DIオーバーライド定義
+
+**📥 インポート**
+
+| モジュール | 用途 |
 |---|---|
-| `lifespan()`（`@asynccontextmanager`） | アプリの起動・終了処理を定義する非同期コンテキストマネージャ。起動時に `async with engine.begin()` でトランザクションを開き、`run_sync(Base.metadata.create_all)` で全テーブルを作成する。`yield` で制御をアプリ本体へ渡し、`yield` 以降（本コードでは無し）が終了時処理となる。`FastAPI(lifespan=lifespan)` に渡して登録する。 |
-| `app.add_middleware(CORSMiddleware, ...)` | CORSミドルウェアを登録する。`allow_origins=["http://127.0.0.1:5500"]` でフロントのオリジンからのアクセスを許可、`allow_credentials=True` で Cookie・認証ヘッダーの送受信を許可、`allow_methods=["*"]` / `allow_headers=["*"]` で全HTTPメソッド・全ヘッダーを許可する。 |
+| `fastapi.testclient.TestClient` | 同期テストクライアント |
+| `sqlalchemy.create_engine` | テスト用インメモリSQLiteエンジン生成 |
+| `sqlalchemy.pool.StaticPool` | 接続を使い回すテスト用プール |
+| `sqlalchemy.orm.sessionmaker` | テスト用同期セッションファクトリ |
+| `models.Base`, `Item` | テーブル作成・テストデータ投入 |
+| `database.get_db` | DIオーバーライド対象 |
+| `cruds.auth.get_current_user` | 認証DIオーバーライド対象 |
 
-**用語解説: CORS**
+**📝 処理概要**
 
-CORS（Cross-Origin Resource Sharing）… 異なるオリジン間のリソース共有を制御する仕組み。
+pytestフィクスチャを定義する。アプリ本体は非同期だが `TestClient` による同期テストパターンで実装する。
 
-オリジンは「スキーム＋ホスト＋ポート」の組で構成される。
+| フィクスチャ | 処理 |
+|---|---|
+| `session_fixture` | インメモリSQLiteでテーブル作成・テストデータ（Item×2件）投入 |
+| `user_fixture` | テスト用 `DecodedToken` を返す |
+| `client_fixture` | `get_db` / `get_current_user` をオーバーライドして `TestClient` を生成 |
 
-```
-https://example.com:8080/path
-│       │           │
-│       │           └── ポート
-│       └────────────── ホスト（ドメイン）
-└────────────────────── スキーム（プロトコル）
+`override_get_db` は `yield session_fixture` でDI互換のジェネレータとして定義する。
+
+> **⚠️ ソース上の不整合（要修正）**
+> `tests/test_item.py` は `detail` に `"Item not found"` / `"Item not updated"` / `"Item not deleted"` を期待しているが、`routers/item.py` は全て `detail="not found"` を返すため、該当の異常系テストは現状失敗する。テスト側か `routers/item.py` 側のいずれかでメッセージを揃える必要がある。
+
+---
+
+<a id="docker-composeyml"></a>
+## 🐳 [docker-compose.yml](docker-compose.yml)　―　開発用DB環境（PostgreSQL + pgAdmin）
+
+`docker compose up` 一発で、アプリの接続先となる **PostgreSQL 16** と、その GUI 管理ツール **pgAdmin 4** をまとめて起動する。DB名 `fleamarket`（フリマアプリ）はこのプロジェクトのデータベース。
+
+### 📄 ファイル全体
+
+```yaml
+version: "3.7"
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - ./docker/postgres/init.d:/docker-entrypoint-initdb.d
+      - ./docker/postgres/pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: fastapiuser
+      POSTGRES_PASSWORD: fastapipass
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+      POSTGRES_DB: fleamarket
+    hostname: postgres
+    restart: always
+    user: root
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    ports:
+      - 81:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: fastapi@example.com
+      PGADMIN_DEFAULT_PASSWORD: password
+    volumes:
+      - ./docker/pgadmin:/var/lib/pgadmin
+    depends_on:
+      - postgres
 ```
 
----
+### 🧩 サービス一覧
 
-### 📄 [tests/test_user.py](tests/test_user.py)
-
-**インポート**
-
-| モジュール | 用途 |
-|---|---|
-| `fastapi.testclient.TestClient` | FastAPIアプリへHTTPリクエストを送るテスト用クライアント（実サーバの起動不要） |
-| `main.app` | テスト対象の `FastAPI` アプリ本体 |
-
-**処理概要**
-
-`client = TestClient(app)` を生成し、`/users` エンドポイント群に対して実際のHTTPリクエストを発行する結合テスト。一覧・ページネーション・作成・取得・部分更新・削除の正常系と、未存在ID（`99999`）に対する404の異常系を検証する。`test_get_user` / `test_patch_user` / `test_delete_user` は事前に `POST /users` でユーザーを作成し、返却された `id` を用いて後続の操作を確認する。
-
-**テスト項目**
-
-| テスト関数 | 対象 | 検証内容 |
+| サービス | イメージ | 役割 |
 |---|---|---|
-| `test_get_users` | `GET /users` | 200 / レスポンスが list |
-| `test_get_users_paged` | `GET /users/paged?skip=0&limit=10` | 200 / レスポンスが list |
-| `test_create_user` | `POST /users` | 200 / `name`・`email` 一致 / `id` を含む |
-| `test_get_user` | `POST /users` → `GET /users/{id}` | 200 / 取得した `id` が作成時と一致 |
-| `test_get_user_not_found` | `GET /users/99999` | 404 |
-| `test_patch_user` | `POST /users` → `PATCH /users/{id}` | 200 / `name` が更新され `email` は不変（部分更新） |
-| `test_patch_user_not_found` | `PATCH /users/99999` | 404 |
-| `test_delete_user` | `POST /users` → `DELETE /users/{id}` | 200 / 戻り値 `True` / 削除後の `GET` が404 |
-| `test_delete_user_not_found` | `DELETE /users/99999` | 404 |
+| `postgres` | `postgres:16-alpine` | アプリの接続先となるPostgreSQL本体（軽量Alpineベース） |
+| `pgadmin` | `dpage/pgadmin4` | ブラウザからDBを操作・確認するWeb管理UI |
 
----
+### 🐘 postgres サービス
 
-### 📄 [tests/test_item.py](tests/test_item.py)
-
-**インポート**
-
-| モジュール | 用途 |
-|---|---|
-| `fastapi.testclient.TestClient` | FastAPIアプリへHTTPリクエストを送るテスト用クライアント（実サーバの起動不要） |
-| `main.app` | テスト対象の `FastAPI` アプリ本体 |
-
-**処理概要**
-
-`client = TestClient(app)` を生成し、`/items` エンドポイント群に対する結合テストを行う。Itemは `user_id`（外部キー）を必須とするため、ヘルパー関数 `_create_user(name, email)` で先にユーザーを作成し、その戻り値のIDを使ってアイテムを作成・検証する。一覧・ページネーション・作成・取得・ユーザー別取得・部分更新・削除の正常系と、未存在ID（`99999`）に対する404の異常系を検証する。
-
-**ヘルパー関数**
-
-| 関数 | 説明 |
-|---|---|
-| `_create_user(name, email) -> int` | `POST /users` でテスト用ユーザーを作成し、生成された `id` を返す（各テストの前提データ準備用） |
-
-**テスト項目**
-
-| テスト関数 | 対象 | 検証内容 |
+| 項目 | 値 | 説明 |
 |---|---|---|
-| `test_get_items` | `GET /items` | 200 / レスポンスが list |
-| `test_get_items_paged` | `GET /items/paged?skip=0&limit=10` | 200 / レスポンスが list |
-| `test_create_item` | `POST /items` | 200 / `title`・`description` 一致 / `id` を含む |
-| `test_get_item` | `POST /items` → `GET /items/{id}` | 200 / 取得した `id` が作成時と一致 |
-| `test_get_item_not_found` | `GET /items/99999` | 404 |
-| `test_get_items_by_user` | `POST /items` → `GET /items/user/{user_id}` | 200 / レスポンスが list / 1件以上存在 |
-| `test_patch_item` | `POST /items` → `PATCH /items/{id}` | 200 / `title` が更新され `description` は不変（部分更新） |
-| `test_patch_item_not_found` | `PATCH /items/99999` | 404 |
-| `test_delete_item` | `POST /items` → `DELETE /items/{id}` | 200 / 戻り値 `True` / 削除後の `GET` が404 |
-| `test_delete_item_not_found` | `DELETE /items/99999` | 404 |
+| image | `postgres:16-alpine` | PostgreSQL 16（軽量Alpineベース） |
+| container_name | `postgres` | コンテナ名を `postgres` に固定 |
+| ports | `5432:5432` | ホストの5432番を公開。ローカルのFastAPIから接続可能 |
+| volumes | `init.d → /docker-entrypoint-initdb.d` | 初回起動時に実行される初期化SQL/スクリプト置き場 |
+| volumes | `pgdata → /var/lib/postgresql/data` | DB実データを永続化（コンテナ削除後もデータが残る） |
+| environment | `POSTGRES_USER=fastapiuser` | DBユーザー |
+| environment | `POSTGRES_PASSWORD=fastapipass` | DBパスワード |
+| environment | `POSTGRES_DB=fleamarket` | 初期作成されるDB名 |
+| environment | `POSTGRES_INITDB_ARGS=--encoding=UTF-8` | エンコーディングをUTF-8に指定 |
+| hostname | `postgres` | コンテナ間通信用ホスト名。pgAdminからの接続先ホストに指定する |
+| restart | `always` | クラッシュ・再起動時に自動復帰 |
+| user | `root` | コンテナを root 実行（権限上は非推奨・後述の補足参照） |
+
+接続URL（`config.py` の `database_url` / `.env` の `DATABASE_URL`）は非同期ドライバを使い、以下の形式になる：
+
+```
+postgresql+asyncpg://fastapiuser:fastapipass@0.0.0.0:5432/fleamarket
+```
+
+> ※ ホストは `localhost` でも同義。本リポジトリの `.env` では `0.0.0.0` を指定している。
+
+### 🖥️ pgadmin サービス
+
+| 項目 | 値 | 説明 |
+|---|---|---|
+| image | `dpage/pgadmin4` | pgAdmin 4（Web版DB管理ツール） |
+| ports | `81:80` | ブラウザで `http://localhost:81` からアクセス |
+| environment | `PGADMIN_DEFAULT_EMAIL=fastapi@example.com` | ログイン用メールアドレス |
+| environment | `PGADMIN_DEFAULT_PASSWORD=password` | ログイン用パスワード |
+| volumes | `pgadmin → /var/lib/pgadmin` | pgAdminの設定・接続情報を永続化 |
+| depends_on | `postgres` | postgres起動後に立ち上げ |
+
+> **補足**
+> - `depends_on` は起動順序を制御するだけで、PostgreSQLの接続受付完了までは保証しない。確実を期すなら `healthcheck` + `condition: service_healthy` の併用を推奨。
+> - `version: "3.7"` は Compose V2 では無視される属性のため省略可。
+> - `user: root` は権限整合性の観点から非推奨。ボリュームのパーミッション問題が出ていなければ外してよい。
 
 ---
 
-### 📄 [frontapp/](frontapp/)
+<a id="frontend"></a>
+## 🖥️ フロントエンド（のみの市）　―　HTML / CSS / Vanilla JS
 
-ブラウザから直接APIを操作できる管理UIです。
+FastAPI 製フリマアプリ（fleamarket）バックエンドに対応した、素の **HTML / CSS / JavaScript** フロントエンドです。フレームワーク・ビルド不要で、`frontend/` ディレクトリにまとまっています。
 
-| ファイル | 説明 |
+### 構成
+
+| ファイル | 役割 |
 |---|---|
-| `index.html` | Users / Items タブ切り替え、ページネーション、モーダルによるCRUD操作 |
-| `app.js` | API呼び出しロジック（fetch、エンドポイント定義、ステータス表示） |
-| `styles.css` | スタイル定義 |
+| `frontend/index.html` | 画面構造。検索・出品一覧・各ダイアログ（`<dialog>`）を定義 |
+| `frontend/styles.css` | デザイン（値札モチーフ・レスポンシブ・アクセシビリティ対応） |
+| `frontend/app.js` | API クライアントと画面ロジック（JWT 認証・CRUD・検索） |
 
-Live Server 等で `index.html` を開き、BASE URL に `http://127.0.0.1:8000` を設定して使用する。
+### 必要な前提（CORS）
+
+バックエンド側の CORS 設定が **`http://localhost:3000` のみ** を許可しているため、フロントは必ず **3000 番ポート**から配信してください（`file://` で直接開くと CORS で通信できません）。
+
+### 起動手順
+
+#### 1. バックエンドを起動（ポート 8000）
+
+```bash
+# fleamarket バックエンドのディレクトリで
+docker compose up -d          # PostgreSQL + pgAdmin
+uvicorn main:app --reload     # http://localhost:8000
+```
+
+#### 2. フロントエンドを配信（ポート 3000）
+
+`frontend/` フォルダで、どれか1つ：
+
+```bash
+python -m http.server 3000
+# または
+npx serve -l 3000
+```
+
+ブラウザで **http://localhost:3000** を開きます。
+
+### API の向き先を変えるには
+
+バックエンドが 8000 番以外の場合は、`app.js` 先頭の定数を編集してください。
+
+```js
+const API_BASE = "http://localhost:8000";
+```
+
+### できること
+
+- 出品一覧の閲覧・商品名検索（2文字以上）— **ログイン不要**
+- 新規登録 / ログイン（JWT を `localStorage` に保持）
+- 出品の追加・編集（販売状況の変更含む）・削除 — **ログイン必須**
+- 自分の出品だけ「編集 / 削除」ボタンと緑のラベルを表示（`GET /items` の `user_id` と JWT 内の `id` を照合）
+
+### バックエンド仕様との対応
+
+| 操作 | エンドポイント | 認証 | 備考 |
+|---|---|---|---|
+| 一覧 / 検索 | `GET /items` ・ `GET /items?name=` | 不要 | 検索語は 2〜20 文字 |
+| 出品 | `POST /items` | 必要 | `name`(2-50) / `price`(>0 整数) / `description`(任意 255) |
+| 編集 | `PUT /items/{id}` | 必要 | 自分の出品のみ。`status` は `ON_SALE` / `SOLD_OUT` |
+| 削除 | `DELETE /items/{id}` | 必要 | 自分の出品のみ |
+| 登録 | `POST /auth/signup` | 不要 | 重複ユーザー名は 409 |
+| ログイン | `POST /auth/login` | 不要 | `application/x-www-form-urlencoded` で送信 |

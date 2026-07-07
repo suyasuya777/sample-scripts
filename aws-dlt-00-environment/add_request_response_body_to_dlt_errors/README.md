@@ -65,7 +65,7 @@ load-test.sh は、JMX 内の `filename` タグを検出して、その出力フ
                  testclass="ResultCollector"
                  testname="error-detail-writer"
                  enabled="true">
-  <boolProp name="ResultCollector.error_logging">true</boolProp>  <!-- エラーのみ記録（はじめては小さく） -->
+  <boolProp name="ResultCollector.error_logging">true</boolProp>  <!-- エラーのみ記録 -->
   <objProp>
     <name>saveConfig</name>
     <value class="SampleSaveConfiguration">
@@ -74,15 +74,15 @@ load-test.sh は、JMX 内の `filename` タグを検出して、その出力フ
       <timestamp>true</timestamp>
       <success>true</success>
       <label>true</label>
-      <code>true</code>                <!-- レスポンスコード（旧 responseCode を修正） -->
-      <message>true</message>          <!-- レスポンスメッセージ（旧 responseMessage を修正） -->
+      <code>true</code>                <!-- レスポンスコード -->
+      <message>true</message>          <!-- レスポンスメッセージ -->
       <threadName>true</threadName>
       <dataType>true</dataType>
       <encoding>false</encoding>
       <assertions>true</assertions>
       <subresults>true</subresults>
       <responseData>true</responseData>   <!-- レスポンスボディ -->
-      <samplerData>true</samplerData>     <!-- リクエストボディ（旧 requestData を修正） -->
+      <samplerData>true</samplerData>     <!-- リクエストボディ -->
       <xml>true</xml>
       <fieldNames>true</fieldNames>
       <responseHeaders>true</responseHeaders>

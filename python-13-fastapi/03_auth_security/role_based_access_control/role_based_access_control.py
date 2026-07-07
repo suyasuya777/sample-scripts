@@ -4,11 +4,11 @@
 - Dependsで役割チェック関数を注入してエンドポイントを保護
 - admin / user / guest の3ロールを例示
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
+import jwt  # PyJWT
 from enum import Enum
 
 SECRET_KEY = "rbac-sample-secret"
@@ -26,7 +26,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
-    except JWTError:
+    except jwt.InvalidTokenError:  # 期限切れ・改ざん等をまとめて捕捉（ExpiredSignatureError等の基底）
         raise HTTPException(status_code=401, detail="Invalid token")
 
 def require_role(*roles: Role):
@@ -49,6 +49,6 @@ async def user_profile(user: dict = Depends(require_role(Role.ADMIN, Role.USER))
 @app.post("/login")
 async def login(username: str = "admin", role: Role = Role.ADMIN):
     payload = {"sub": username, "role": role.value,
-               "exp": datetime.now() + timedelta(minutes=30)}
+               "exp": datetime.now(timezone.utc) + timedelta(minutes=30)}
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     return {"access_token": token, "token_type": "bearer"}

@@ -116,7 +116,7 @@ async function loadItems() {
   renderSkeleton();
   try {
     const q = state.query.trim();
-    const path = q.length >= 2 ? `/items?name=${encodeURIComponent(q)}` : "/items";
+    const path = q.length >= 1 ? `/items?name=${encodeURIComponent(q)}` : "/items";
     state.items = await api(path);
     renderItems();
   } catch (err) {
@@ -195,7 +195,7 @@ function renderItems() {
 
   if (state.items.length === 0) {
     $("#empty-sell-btn").hidden = false;
-    if (state.query.trim().length >= 2) {
+    if (state.query.trim().length >= 1) {
       $("#empty-title").textContent = "見つかりませんでした";
       $("#empty-text").textContent = `「${state.query.trim()}」に当てはまる品物はありません。別の言葉で探してみてください。`;
       $("#empty-sell-btn").hidden = true;
@@ -286,8 +286,10 @@ function setAuthMode(mode) {
   $("#auth-error").hidden = true;
 }
 
+let authBusy = false;   // click と submit の二重発火を防ぐガード
 async function submitAuth(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
+  if (authBusy) return;          // 既に処理中なら無視
   const username = $("#auth-username").value.trim();
   const password = $("#auth-password").value;
   const errEl = $("#auth-error");
@@ -296,6 +298,7 @@ async function submitAuth(e) {
   if (username.length < 2) return showFieldError(errEl, "ユーザー名は2文字以上で入力してください。");
   if (password.length < 8) return showFieldError(errEl, "パスワードは8文字以上で入力してください。");
 
+  authBusy = true;
   btn.disabled = true;
   const original = btn.textContent;
   btn.textContent = "処理中…";
@@ -311,8 +314,12 @@ async function submitAuth(e) {
     renderItems();
     toast(authMode === "signup" ? `ようこそ、${username} さん` : `ログインしました`, "ok");
   } catch (err) {
-    showFieldError(errEl, err.message);
+    // ▼ 本当の失敗原因を必ず見えるようにする（Console とダイアログの両方へ）
+    console.error("[auth] 失敗:", { mode: authMode, status: err.status, message: err.message }, err);
+    const where = authMode === "signup" ? "新規登録" : "ログイン";
+    showFieldError(errEl, `${where}に失敗：${err.message}（status=${err.status ?? "?"}）`);
   } finally {
+    authBusy = false;
     btn.disabled = false;
     btn.textContent = original;
   }
@@ -440,14 +447,10 @@ function init() {
   renderAccount();
   loadItems();
 
-  // search
+  // search（1文字以上で検索）
   $("#search-input").addEventListener("input", debounce((e) => {
-    const v = e.target.value;
-    const label = $("#searching-label");
-    if (v.trim().length === 1) { label.textContent = "（2文字以上で検索）"; label.hidden = false; }
-    else label.hidden = true;
-    state.query = v;
-    if (v.trim().length === 1) return;     // backend requires >= 2 chars
+    $("#searching-label").hidden = true;
+    state.query = e.target.value;
     loadItems();
   }, 350));
 
@@ -458,7 +461,8 @@ function init() {
   // auth dialog
   $("#tab-login").addEventListener("click", () => setAuthMode("login"));
   $("#tab-signup").addEventListener("click", () => setAuthMode("signup"));
-  $("#auth-form").addEventListener("submit", submitAuth);
+  $("#auth-form").addEventListener("submit", (e) => { e.preventDefault(); submitAuth(e); });
+  $("#auth-submit").addEventListener("click", (e) => { e.preventDefault(); submitAuth(e); });
 
   // item dialog
   $("#item-form").addEventListener("submit", submitItem);

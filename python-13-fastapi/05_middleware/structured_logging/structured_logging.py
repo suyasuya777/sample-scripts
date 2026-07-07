@@ -1,18 +1,18 @@
 """
 学習ポイント: 構造化ログ（JSON形式）の実装
-- python-json-logger : ログをJSON形式で出力するライブラリ
-- ログフィールド      : timestamp / level / message / request_id / user_id 等
-- CloudWatch対応     : JSON形式にすることでAWS CloudWatch Logs Insightsで検索可能
+- logging.Formatter 継承 : 追加ライブラリ不要で JsonFormatter を自作しJSON出力
+- ログフィールド         : timestamp / level / message / module / function（+ extra で任意付与）
+- CloudWatch対応         : JSON形式にすることでAWS CloudWatch Logs Insightsで検索可能
 """
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import FastAPI, Request
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         log_data = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level":     record.levelname,
             "message":   record.getMessage(),
             "module":    record.module,

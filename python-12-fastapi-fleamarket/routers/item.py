@@ -1,60 +1,77 @@
 from typing import Annotated
-from fastapi import APIRouter, Path, Query, HTTPException, Depends
+
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette import status
-from cruds import item as item_cruds, auth as auth_cruds
-from schemas import ItemCreate, ItemUpdate, ItemResponse, DecodedToken
+
+from cruds import auth as auth_cruds
+from cruds import item as item_cruds
 from database import get_db
+from schemas import DecodedToken, ItemCreate, ItemResponse, ItemUpdate
 
+DbDependency = Annotated[
+    AsyncSession,
+    Depends(get_db)
+]
 
-DbDependency = Annotated[AsyncSession, Depends(get_db)]
-
-UserDependency = Annotated[DecodedToken, Depends(auth_cruds.get_current_user)]
+UserDependency = Annotated[
+    DecodedToken,
+    Depends(auth_cruds.get_current_user)
+]
 
 router = APIRouter(prefix="/items", tags=["Items"])
 
 
-@router.get("", response_model=list[ItemResponse], status_code=status.HTTP_200_OK)
-async def find_all(db: DbDependency):
-    return await item_cruds.find_all(db)
-
-
-@router.get("/{id}", response_model=ItemResponse, status_code=status.HTTP_200_OK)
-async def find_by_id(db: DbDependency, user: UserDependency, id: int = Path(gt=0)):
-    found_item = await item_cruds.find_by_id(db, id, user.user_id)
-    if not found_item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    return found_item
-
-
-@router.get("/", response_model=list[ItemResponse], status_code=status.HTTP_200_OK)
-async def find_by_name(
-    db: DbDependency, name: str = Query(min_length=2, max_length=20)
+@router.get("", response_model=list[ItemResponse])
+async def get_items(
+    db: DbDependency,
+    name: str | None = Query(default=None, min_length=2, max_length=20),
 ):
-    return await item_cruds.find_by_name(db, name)
+    if name is None:
+        return await item_cruds.get_items(db)
+    return await item_cruds.get_items_by_name(db, name)
+
+
+@router.get("/{item_id}", response_model=ItemResponse)
+async def get_item(
+    db: DbDependency,
+    user: UserDependency,
+    item_id: int = Path(gt=0)
+):
+    item = await item_cruds.get_item(db, item_id, user.user_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="not found")
+    return item
 
 
 @router.post("", response_model=ItemResponse, status_code=status.HTTP_201_CREATED)
-async def create(db: DbDependency, user: UserDependency, item_create: ItemCreate):
-    return await item_cruds.create(db, item_create, user.user_id)
-
-
-@router.put("/{id}", response_model=ItemResponse, status_code=status.HTTP_200_OK)
-async def update(
+async def create_item(
     db: DbDependency,
     user: UserDependency,
-    item_update: ItemUpdate,
-    id: int = Path(gt=0),
+    item_in: ItemCreate
 ):
-    updated_item = await item_cruds.update(db, id, item_update, user.user_id)
-    if not updated_item:
-        raise HTTPException(status_code=404, detail="Item not updated")
-    return updated_item
+    return await item_cruds.create_item(db, item_in, user.user_id)
 
 
-@router.delete("/{id}", response_model=ItemResponse, status_code=status.HTTP_200_OK)
-async def delete(db: DbDependency, user: UserDependency, id: int = Path(gt=0)):
-    deleted_item = await item_cruds.delete(db, id, user.user_id)
-    if not deleted_item:
-        raise HTTPException(status_code=404, detail="Item not deleted")
-    return deleted_item
+@router.put("/{item_id}", response_model=ItemResponse)
+async def update_item(
+    db: DbDependency,
+    user: UserDependency,
+    item_in: ItemUpdate,
+    item_id: int = Path(gt=0),
+):
+    item = await item_cruds.update_item(db, item_id, item_in, user.user_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="not found")
+    return item
+
+
+@router.delete("/{item_id}", response_model=bool)
+async def delete(
+    db: DbDependency,
+    user: UserDependency,
+    item_id: int = Path(gt=0)
+):
+    item = await item_cruds.delete_item(db, item_id, user.user_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="not found")
+    return True

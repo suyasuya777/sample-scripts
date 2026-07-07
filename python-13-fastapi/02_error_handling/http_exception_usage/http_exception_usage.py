@@ -4,10 +4,9 @@
 - status_code        : 4xx/5xxのHTTPステータスコード
 - detail             : エラー詳細（文字列またはdict）
 - headers            : レスポンスヘッダーの追加（認証エラー時のWWW-Authenticate等）
-- starlette.status   : ステータスコード定数（HTTP_404_NOT_FOUND等）
+- fastapi.status     : ステータスコード定数（HTTP_404_NOT_FOUND等。starlette.statusと同一）
 """
-from fastapi import FastAPI, HTTPException, Path
-from starlette import status
+from fastapi import FastAPI, HTTPException, Path, status
 
 app = FastAPI()
 

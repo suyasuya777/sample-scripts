@@ -9,7 +9,7 @@
 """
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 # import watchtower  # pip install watchtower
 
@@ -21,7 +21,7 @@ class CloudWatchJsonFormatter(logging.Formatter):
     """CloudWatch Logs Insights で検索しやすいJSON形式"""
     def format(self, record: logging.LogRecord) -> str:
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level":     record.levelname,
             "message":   record.getMessage(),
             "service":   "fastapi-app",

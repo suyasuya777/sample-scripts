@@ -1,32 +1,49 @@
 from datetime import timedelta
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.ext.asyncio import AsyncSession
-from starlette import status
-from cruds import auth as auth_cruds
-from schemas import UserCreate, UserResponse, Token
-from database import get_db
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from cruds import auth as auth_cruds
+from database import get_db
+from schemas import Token, UserCreate, UserResponse
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-DbDependency = Annotated[AsyncSession, Depends(get_db)]
-FormDependency = Annotated[OAuth2PasswordRequestForm, Depends()]
+DbDependency = Annotated[
+    AsyncSession,
+    Depends(get_db)
+]
+
+FormDependency = Annotated[
+    OAuth2PasswordRequestForm,
+    Depends()
+]
 
 
-@router.post(
-    "/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED
-)
-async def create_user(db: DbDependency, user_create: UserCreate):
-    return await auth_cruds.create_user(db, user_create)
+@router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(db: DbDependency, user_in: UserCreate):
+    try:
+        return await auth_cruds.create_user(db, user_in)
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username already exists",
+        )
 
-
-@router.post("/login", status_code=status.HTTP_200_OK, response_model=Token)
-async def login(db: DbDependency, form_data: FormDependency):
-    user = await auth_cruds.authenticate_user(db, form_data.username, form_data.password)
+@router.post("/login", response_model=Token)
+async def login_user(
+    db: DbDependency,
+    form_in: FormDependency
+):
+    user = await auth_cruds.authenticate_user(db, form_in.username, form_in.password)
     if not user:
-        raise HTTPException(status_code=401, detail="Incorrect username or password")
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password"
+        )
 
     token = auth_cruds.create_access_token(
         user.username, user.id, timedelta(minutes=20)
