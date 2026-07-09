@@ -1,15 +1,27 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
-from sqlalchemy import Enum, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
-from schemas import ItemStatus
+from enums import ItemStatusEnum
 
 
-class Item(Base):
+class TimestampMixin:
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC)
+    )
+
+
+class Item(TimestampMixin, Base):
     __tablename__ = "items"
 
     id: Mapped[int] = mapped_column(
@@ -26,18 +38,12 @@ class Item(Base):
         String(255)
     )
 
-    status: Mapped[ItemStatus] = mapped_column(
-        Enum(ItemStatus),
-        default=ItemStatus.ON_SALE
+    image_url: Mapped[str | None] = mapped_column(
+        String(255)
     )
 
-    created_at: Mapped[datetime] = mapped_column(
-        default=datetime.now
-    )
-
-    updated_at: Mapped[datetime] = mapped_column(
-        default=datetime.now,
-        onupdate=datetime.now
+    status: Mapped[ItemStatusEnum] = mapped_column(
+        default=ItemStatusEnum.ON_SALE
     )
 
     user_id: Mapped[int] = mapped_column(
@@ -45,12 +51,11 @@ class Item(Base):
     )
 
     user: Mapped[User] = relationship(
-        "User",
         back_populates="items"
     )
 
 
-class User(Base):
+class User(TimestampMixin, Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(
@@ -62,24 +67,10 @@ class User(Base):
         unique=True
     )
 
-    password: Mapped[str] = mapped_column(
+    password_hash: Mapped[str] = mapped_column(
         String(255)
     )
 
-    salt: Mapped[str] = mapped_column(
-        String(64)
-    )
-
-    created_at: Mapped[datetime] = mapped_column(
-        default=datetime.now
-    )
-
-    updated_at: Mapped[datetime] = mapped_column(
-        default=datetime.now,
-        onupdate=datetime.now
-    )
-
     items: Mapped[list[Item]] = relationship(
-        "Item",
         back_populates="user"
     )

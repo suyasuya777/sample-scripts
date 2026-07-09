@@ -1,14 +1,10 @@
 from datetime import datetime
-from enum import Enum
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from fastapi import Form, HTTPException
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-
-class ItemStatus(Enum):
-    ON_SALE = "ON_SALE"
-    SOLD_OUT = "SOLD_OUT"
-
+from enums import ItemStatusEnum
 
 ItemId = Annotated[
     int,
@@ -43,6 +39,13 @@ ItemOptionalDescription = Annotated[
     )
 ]
 
+ItemStatus = Annotated[
+    ItemStatusEnum,
+    Field(
+        examples=[ItemStatusEnum.ON_SALE]
+    )
+]
+
 ItemOptionalName = Annotated[
     str | None,
     Field(
@@ -61,12 +64,11 @@ ItemOptionalPrice = Annotated[
 ]
 
 ItemOptionalStatus = Annotated[
-    ItemStatus | None,
+    ItemStatusEnum | None,
     Field(
-        examples=[ItemStatus.SOLD_OUT]
+        examples=[ItemStatusEnum.ON_SALE]
     )
 ]
-
 
 UserId = Annotated[
     int,
@@ -95,7 +97,11 @@ Password = Annotated[
 ]
 
 
-class ItemBase(BaseModel):
+class StrippedBaseModel(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+
+class ItemBase(StrippedBaseModel):
     name: ItemName
     price: ItemPrice
     description: ItemOptionalDescription = None
@@ -105,7 +111,18 @@ class ItemCreate(ItemBase):
     pass
 
 
-class ItemUpdate(BaseModel):
+def item_create_form(
+    name: Annotated[str, Form()],
+    price: Annotated[int, Form()],
+    description: Annotated[str | None, Form()] = None,
+) -> ItemCreate:
+    try:
+        return ItemCreate(name=name, price=price, description=description)
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors())
+
+
+class ItemUpdate(StrippedBaseModel):
     name: ItemOptionalName = None
     price: ItemOptionalPrice = None
     description: ItemOptionalDescription = None
@@ -114,33 +131,34 @@ class ItemUpdate(BaseModel):
 
 class ItemResponse(ItemBase):
     id: ItemId
-    status: Annotated[ItemStatus, Field(examples=[ItemStatus.ON_SALE])]
+    status: ItemStatus
+    image_url: str | None = None
     created_at: datetime
     updated_at: datetime
     user_id: int
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
 
 
-class UserCreate(BaseModel):
+class UserCreate(StrippedBaseModel):
     username: Username
     password: Password
 
 
-class UserResponse(BaseModel):
+class UserResponse(StrippedBaseModel):
     id: UserId
     username: Username
     created_at: datetime
     updated_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
 
 
-class Token(BaseModel):
+class Token(StrippedBaseModel):
     access_token: str
     token_type: str
 
 
-class DecodedToken(BaseModel):
+class DecodedToken(StrippedBaseModel):
     username: str
     user_id: int

@@ -195,6 +195,20 @@ button { cursor: pointer; }
 }
 .card.is-sold { background: #FBFAF6; }
 
+/* ---- listing image (bleeds to card edges) ---------------------------- */
+.card__media {
+  margin: -20px -20px 0;          /* card padding は 20px → 上と左右いっぱいに */
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--paper-deep);
+  border-bottom: 1px solid var(--line);
+}
+.card__media img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.card.is-sold .card__media img { filter: grayscale(.35) opacity(.9); }
+@media (max-width: 720px) {
+  .card__media { margin: -16px -16px 0; }   /* small card padding は 16px */
+}
+
 .card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .card__name {
   font-family: var(--font-display); font-weight: 700; font-size: 1.12rem;
@@ -333,6 +347,22 @@ dialog.dialog::backdrop { background: rgba(24,30,22,.5); backdrop-filter: blur(2
 .input--price { padding-left: 30px; font-family: var(--font-mono); }
 .price-prefix { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--ink-soft); font-family: var(--font-mono); font-weight: 700; }
 .input.is-invalid, .textarea.is-invalid { border-color: var(--stamp); background: var(--stamp-soft); }
+
+/* file input + image preview */
+.input--file { padding: 8px 10px; font-family: var(--font-body); font-size: .84rem; cursor: pointer; }
+.input--file::file-selector-button {
+  font: inherit; font-weight: 600; font-size: .8rem;
+  margin-right: 10px; padding: 6px 12px;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: var(--surface); color: var(--brand-deep); cursor: pointer;
+}
+.input--file::file-selector-button:hover { background: var(--brand-tint); }
+.image-preview {
+  margin-top: 10px; border: 1px solid var(--line); border-radius: var(--r-md);
+  overflow: hidden; background: var(--paper-deep);
+}
+.image-preview[hidden] { display: none; }
+.image-preview img { display: block; width: 100%; max-height: 220px; object-fit: contain; }
 
 .form-error {
   background: var(--stamp-soft); color: var(--stamp);

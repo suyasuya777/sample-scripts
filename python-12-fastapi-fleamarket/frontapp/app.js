@@ -11,6 +11,8 @@
 const API_BASE = "http://127.0.0.1:8000";      // 127.0.0.1 を使う（localhost だと IPv6 解決で接続が固まる環境があるため）
 const TOKEN_KEY = "fm_token";
 const STATUS_LABEL = { ON_SALE: "出品中", SOLD_OUT: "売切れ" };
+const ALLOWED_IMAGE = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 /* ---------------------------------------------------------------- state -- */
 const state = {
@@ -78,12 +80,13 @@ function describeError(payload, status) {
   return `エラーが発生しました（HTTP ${status}）`;
 }
 
-async function api(path, { method = "GET", json, form, auth = false } = {}) {
+async function api(path, { method = "GET", json, form, formData, auth = false } = {}) {
   const headers = {};
   let body;
 
   if (json !== undefined) { headers["Content-Type"] = "application/json"; body = JSON.stringify(json); }
   if (form !== undefined) { headers["Content-Type"] = "application/x-www-form-urlencoded"; body = new URLSearchParams(form).toString(); }
+  if (formData !== undefined) { body = formData; }  // multipart: Content-Type はブラウザが boundary 付きで自動設定
   if (auth) {
     if (!state.token) throw new ApiError("ログインが必要です", 401);
     headers["Authorization"] = `Bearer ${state.token}`;
@@ -253,6 +256,15 @@ function renderCard(item, isMine) {
   }
 
   card.append(head, desc, tagrow, foot);
+  if (item.image_url) {
+    const media = el("div", "card__media");
+    const img = el("img");
+    img.src = API_BASE + item.image_url;
+    img.alt = item.name;
+    img.loading = "lazy";
+    media.append(img);
+    card.prepend(media);
+  }
   if (sold) { const s = el("span", "stamp"); s.textContent = "SOLD"; card.append(s); }
   return card;
 }
@@ -355,6 +367,12 @@ function openItemDialog(item = null) {
   $("#item-desc").value  = item ? (item.description ?? "") : "";
   $("#item-status").value = item ? item.status : "ON_SALE";
 
+  // 画像フィールド初期化（編集時は既存画像をプレビュー）
+  $("#item-image").value = "";
+  const _prev = $("#item-image-preview"), _prevImg = $("#item-image-preview-img");
+  if (item && item.image_url) { _prevImg.src = API_BASE + item.image_url; _prev.hidden = false; }
+  else { _prevImg.removeAttribute("src"); _prev.hidden = true; }
+
   clearInvalid();
   if (!itemDialog.open) itemDialog.showModal();
   setTimeout(() => $("#item-name").focus(), 50);
@@ -383,14 +401,23 @@ async function submitItem(e) {
   const original = btn.textContent;
   btn.textContent = "保存中…";
   try {
+    let id;
     if (editingId === null) {
-      await api("/items", { method: "POST", auth: true, json: { name, price, description: description || null } });
-      toast("出品しました", "ok");
+      const created = await api("/items", { method: "POST", auth: true, json: { name, price, description: description || null } });
+      id = created.id;
     } else {
       const status = $("#item-status").value;
       await api(`/items/${editingId}`, { method: "PUT", auth: true, json: { name, price, description: description || null, status } });
-      toast("変更を保存しました", "ok");
+      id = editingId;
     }
+    // 画像が選択されていれば multipart でアップロード
+    const file = $("#item-image").files[0] || null;
+    if (file) {
+      const fd = new FormData();
+      fd.append("file", file);
+      await api(`/items/${id}/image`, { method: "POST", auth: true, formData: fd });
+    }
+    toast(editingId === null ? "出品しました" : "変更を保存しました", "ok");
     itemDialog.close();
     await loadItems();
   } catch (err) {
@@ -399,6 +426,25 @@ async function submitItem(e) {
     btn.disabled = false;
     btn.textContent = original;
   }
+}
+
+/* 画像選択時のクライアント側チェック＆プレビュー */
+function onImagePicked() {
+  const input = $("#item-image");
+  const prev = $("#item-image-preview"), prevImg = $("#item-image-preview-img");
+  const f = input.files[0];
+  if (!f) { prev.hidden = true; return; }
+  if (!ALLOWED_IMAGE.includes(f.type)) {
+    input.value = ""; prev.hidden = true;
+    return showFieldError($("#item-error"), "画像は jpeg / png / webp / gif を選んでください。");
+  }
+  if (f.size > MAX_IMAGE_BYTES) {
+    input.value = ""; prev.hidden = true;
+    return showFieldError($("#item-error"), "画像は5MBまでです。");
+  }
+  $("#item-error").hidden = true;
+  prevImg.src = URL.createObjectURL(f);
+  prev.hidden = false;
 }
 
 /* ============================================================ CONFIRM ===== */
@@ -466,6 +512,7 @@ function init() {
 
   // item dialog
   $("#item-form").addEventListener("submit", submitItem);
+  $("#item-image").addEventListener("change", onImagePicked);
 
   // confirm
   $("#confirm-ok").addEventListener("click", doDelete);

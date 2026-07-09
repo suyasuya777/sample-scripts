@@ -12,18 +12,19 @@ async def get_items(
         select(Item)
     )
     items = result.scalars().all()
-    return items
+    return list(items)
 
 
 async def get_items_by_name(
     db: AsyncSession,
     name: str
 ) -> list[Item]:
+    escaped = name.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     result = await db.execute(
-        select(Item).where(Item.name.like(f"%{name}%"))
+        select(Item).where(Item.name.ilike(f"%{escaped}%", escape="\\"))
     )
     items = result.scalars().all()
-    return items
+    return list(items)
 
 
 async def get_item(
@@ -35,8 +36,6 @@ async def get_item(
         select(Item).where(Item.id == item_id, Item.user_id == user_id)
     )
     item = result.scalar_one_or_none()
-    if not item:
-        return None
     return item
 
 
@@ -47,7 +46,7 @@ async def create_item(
 ) -> Item:
     item = Item(**item_in.model_dump(), user_id=user_id)
     db.add(item)
-    await db.commit()
+    await db.flush()
     await db.refresh(item)
     return item
 
@@ -66,7 +65,7 @@ async def update_item(
     for key, value in update_data.items():
         setattr(item, key, value)
 
-    await db.commit()
+    await db.flush()
     await db.refresh(item)
     return item
 
@@ -80,5 +79,16 @@ async def delete_item(
     if item is None:
         return False
     await db.delete(item)
-    await db.commit()
+    await db.flush()
     return True
+
+
+async def set_item_image(
+    db: AsyncSession,
+    item: Item,
+    image_url: str
+) -> Item:
+    item.image_url = image_url
+    await db.flush()
+    await db.refresh(item)
+    return item

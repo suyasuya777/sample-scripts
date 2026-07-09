@@ -26,12 +26,14 @@ FormDependency = Annotated[
 @router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(db: DbDependency, user_in: UserCreate):
     try:
-        return await auth_cruds.create_user(db, user_in)
+        user = await auth_cruds.create_user(db, user_in)
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Username already exists",
         )
+    await db.commit()
+    return user
 
 @router.post("/login", response_model=Token)
 async def login_user(
@@ -41,8 +43,9 @@ async def login_user(
     user = await auth_cruds.authenticate_user(db, form_in.username, form_in.password)
     if not user:
         raise HTTPException(
-            status_code=401,
-            detail="Incorrect username or password"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"}
         )
 
     token = auth_cruds.create_access_token(
