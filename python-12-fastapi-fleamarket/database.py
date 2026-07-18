@@ -6,14 +6,14 @@ from sqlalchemy.orm import DeclarativeBase
 
 from config import get_settings
 
-DATABASE_URL = get_settings().database_url
+settings = get_settings()
 
 
 class Base(DeclarativeBase):
     pass
 
 
-engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(settings.database_url, echo=settings.echo_sql)
 
 async_session = async_sessionmaker(engine, expire_on_commit=False)
 

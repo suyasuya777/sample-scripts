@@ -125,6 +125,14 @@ alembic upgrade head
 > `.env` の `DATABASE_URL` は非同期ドライバ付きで、compose の `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` と一致させる：
 > `postgresql+asyncpg://fastapiuser:fastapipass@localhost:5432/fleamarket`
 > `POSTGRES_*` 環境変数はデータが空の初回起動時のみ適用されるため、ユーザー/DBを作り直したいときは `docker compose down -v` でボリュームごと削除してから起動する。
+>
+> `.env` の例（`SECRET_KEY` は `python -c "import secrets; print(secrets.token_hex(32))"` で生成）：
+> ```
+> SECRET_KEY=<ランダムな16進文字列>
+> DATABASE_URL=postgresql+asyncpg://fastapiuser:fastapipass@localhost:5432/fleamarket
+> ECHO_SQL=false
+> ```
+> 認証情報は `alembic.ini` に直書きせず（`sqlalchemy.url = ` を空にする）、`migrations/env.py` が `get_settings().database_url` から注入する。`.env` は `.gitignore` で追跡対象外にする。
 
 ### 🧪 テスト実行
 
@@ -178,7 +186,7 @@ python -m pytest
 
 **📝 処理概要**
 
-`BaseSettings` を継承した `Settings` クラスで環境変数を管理する。`secret_key`（`SecretStr`）・`database_url` を必須項目とし、`cors_origins` は `http://127.0.0.1:5500` / `http://localhost:5500` をデフォルト値に持つ。`model_config = SettingsConfigDict(env_file=".env")` で `.env` を読み込む。`get_settings()` に `@cache` を付与し、アプリ全体で同一インスタンスを共有する。
+`BaseSettings` を継承した `Settings` クラスで環境変数を管理する。`secret_key`（`SecretStr`）・`database_url` を必須項目とし、`echo_sql`（`bool`・デフォルト `False`）でSQLログ出力を切り替え、`cors_origins` は `http://127.0.0.1:5500` / `http://localhost:5500` をデフォルト値に持つ。`model_config = SettingsConfigDict(env_file=".env")` で `.env` を読み込む。`get_settings()` に `@cache` を付与し、アプリ全体で同一インスタンスを共有する。
 
 ---
 
@@ -213,7 +221,7 @@ python -m pytest
 
 **📝 処理概要**
 
-非同期対応の `engine` / `async_session` / `Base` を生成・公開する。`engine` は `create_async_engine`（`echo=True`）で生成し、`async_session` は `async_sessionmaker` で生成する。`expire_on_commit=False` により commit 後もオブジェクトの属性にアクセス可能にする（async では実質必須）。`Base` は SQLAlchemy 2.0スタイルの `DeclarativeBase` を継承して定義する。`get_db()` は非同期ジェネレータ関数で、FastAPI の `Depends` に渡すことでリクエストごとに非同期DBセッションを払い出し、`async with` により終了後に確実にクローズする。戻り値型は Python 3.11 に合わせ `AsyncGenerator[AsyncSession, None]`（2引数表記）とする。データベースURLには非同期ドライバ（PostgreSQLの場合 `postgresql+asyncpg`）を使用する。
+非同期対応の `engine` / `async_session` / `Base` を生成・公開する。冒頭で `settings = get_settings()` を一度受け、`engine` は `create_async_engine(settings.database_url, echo=settings.echo_sql)` で生成する（SQLログ出力は `.env` の `ECHO_SQL` で切り替え可能・既定は無効）。`async_session` は `async_sessionmaker` で生成する。`expire_on_commit=False` により commit 後もオブジェクトの属性にアクセス可能にする（async では実質必須）。`Base` は SQLAlchemy 2.0スタイルの `DeclarativeBase` を継承して定義する。`get_db()` は非同期ジェネレータ関数で、FastAPI の `Depends` に渡すことでリクエストごとに非同期DBセッションを払い出し、`async with` により終了後に確実にクローズする。戻り値型は Python 3.11 に合わせ `AsyncGenerator[AsyncSession, None]`（2引数表記）とする。データベースURLには非同期ドライバ（PostgreSQLの場合 `postgresql+asyncpg`）を使用する。
 
 > **トランザクション方針**：`commit` はエンドポイント側（`routers/`）に集約し、各CRUD（`cruds/`）は `commit` せず `flush` に留める。これにより「1リクエスト＝1トランザクション」を担保する。
 
@@ -355,7 +363,7 @@ salt がハッシュ文字列に内包されるため、検証時に salt を別
 
 **📝 処理概要**
 
-認証・ユーザー管理に関するDB操作と認証ロジックを提供する。パスワードのハッシュ化・検証は `security.py`（Argon2）に委譲し、このモジュール自身はハッシュアルゴリズムを持たない。
+認証・ユーザー管理に関するDB操作と認証ロジックを提供する。パスワードのハッシュ化・検証は `security.py`（Argon2）に委譲し、このモジュール自身はハッシュアルゴリズムを持たない。JWTの署名鍵は `get_settings().secret_key.get_secret_value()` で `SecretStr` から文字列を取り出して保持する（`SecretStr` のまま `jwt.encode`/`decode` に渡すと `TypeError` になるため）。
 
 | 関数 | 種別 | 処理 |
 |---|---|---|

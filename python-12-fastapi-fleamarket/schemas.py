@@ -119,8 +119,7 @@ def item_create_form(
     try:
         return ItemCreate(name=name, price=price, description=description)
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=e.errors())
-
+        raise HTTPException(status_code=422, detail=e.errors(include_url=False))
 
 class ItemUpdate(StrippedBaseModel):
     name: ItemOptionalName = None

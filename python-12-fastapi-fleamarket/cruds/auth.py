@@ -15,9 +15,8 @@ from models import User
 from schemas import DecodedToken, UserCreate
 from security import hash_password, verify_password
 
-
 ALGORITHM = "HS256"
-SECRET_KEY = get_settings().secret_key
+SECRET_KEY = get_settings().secret_key.get_secret_value()
 
 oauth2_schema = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
