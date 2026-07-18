@@ -24,6 +24,8 @@ AWSの各サービスをboto3で操作する実務向けサンプルプログラ
 - [Cost Explorer](#cost-explorer)
 - [ELBv2](#elbv2)
 - [EKS](#eks)
+- [Athena / Glue](#athena--glue)
+- [STS](#sts)
 
 ---
 
@@ -91,6 +93,12 @@ AWSの各サービスをboto3で操作する実務向けサンプルプログラ
 | cost-explorer/ | [cost_explorer_service_cost.py](#cost_explorer_service_cost--サービス別コスト取得先月比較と急増サービス検出) | サービス別コスト取得（先月比較と急増サービス検出） |
 | elbv2/ | [elbv2_target_health.py](#elbv2_target_health--albターゲットグループのヘルスチェック確認unhealthy検出) | ALBターゲットグループのヘルスチェック確認（unhealthy検出） |
 | eks/ | [eks_describe_cluster.py](#eks_describe_cluster--eksクラスター情報取得ノードグループ状態確認) | EKSクラスター情報取得・ノードグループ状態確認 |
+| athena/ | [athena_run_query.py](#athena_run_query--クエリ実行と結果取得ポーリングalbvpc-flow-logscloudtrail分析) | クエリ実行と結果取得（ポーリング・ALB/VPC Flow Logs/CloudTrail分析） |
+|  | [athena_create_projection_table.py](#athena_create_projection_table--partition-projectionテーブルの作成ddl実行glue-crawler不要) | Partition Projectionテーブルの作成（DDL実行・Glue Crawler不要） |
+|  | [athena_workgroup_named_query.py](#athena_workgroup_named_query--ワークグループと名前付きクエリの管理スキャン量上限定番クエリ再利用) | ワークグループと名前付きクエリの管理（スキャン量上限・定番クエリ再利用） |
+| sts/ | [sts_assume_role_client.py](#sts_assume_role_client--assumeroleで別アカウントのclient生成クロスアカウント基本形) | AssumeRoleで別アカウントのclient生成（クロスアカウント基本形） |
+|  | [sts_multi_account_scan.py](#sts_multi_account_scan--複数アカウントを横断して同一処理を回す部分失敗を許容して継続) | 複数アカウントを横断して同一処理を回す（部分失敗を許容して継続） |
+|  | [sts_credential_cache.py](#sts_credential_cache--一時クレデンシャルのキャッシュと自動更新refreshablecredentials) | 一時クレデンシャルのキャッシュと自動更新（RefreshableCredentials） |
 
 ---
 
@@ -1037,6 +1045,109 @@ import boto3
 - EKS クラスターの一覧取得（`list_clusters`）と詳細確認（`describe_cluster`）
 - Kubernetes バージョン・エンドポイント・ネットワーク設定・ログ設定の確認
 - ノードグループ（`describe_nodegroup`）のスケール設定・ヘルス状態・問題の検出
+
+---
+
+## Athena / Glue
+
+### athena_run_query ― クエリ実行と結果取得（ポーリング・ALB/VPC Flow Logs/CloudTrail分析）
+
+[`athena_run_query.py`](athena/athena_run_query.py)
+
+**インポートするモジュール**
+```python
+import time
+import boto3
+from botocore.exceptions import ClientError
+```
+
+
+- Athena クエリの実行（`start_query_execution`）と完了までのポーリング（`get_query_execution`）
+- クエリ結果の全件取得（`get_query_results` の paginator）とヘッダー行・NULL セルの処理
+- スキャン量（`DataScannedInBytes`）の確認とタイムアウト時のクエリ停止（`stop_query_execution`）
+
+### athena_create_projection_table ― Partition Projectionテーブルの作成（DDL実行・Glue Crawler不要）
+
+[`athena_create_projection_table.py`](athena/athena_create_projection_table.py)
+
+**インポートするモジュール**
+```python
+import time
+import boto3
+from botocore.exceptions import ClientError
+```
+
+
+- データベース作成（`CREATE DATABASE`）と外部テーブル作成（`CREATE EXTERNAL TABLE`）の DDL 実行
+- Partition Projection（`projection.*` / `storage.location.template`）による Glue Crawler・ADD PARTITION 不要のパーティション管理
+- ALB アクセスログを `day` の date 型で射影するテーブル定義（実 S3 パスと template の一致がポイント）
+
+### athena_workgroup_named_query ― ワークグループと名前付きクエリの管理（スキャン量上限・定番クエリ再利用）
+
+[`athena_workgroup_named_query.py`](athena/athena_workgroup_named_query.py)
+
+**インポートするモジュール**
+```python
+import boto3
+from botocore.exceptions import ClientError
+```
+
+
+- ワークグループの作成（`create_work_group`）とスキャン量上限（`BytesScannedCutoffPerQuery`）によるコスト制御
+- 障害調査の定番クエリの登録（`create_named_query`）と一覧・詳細取得（`list_named_queries` / `batch_get_named_query`）
+- 結果出力先・CloudWatch メトリクス連携の設定と既存ワークグループの重複作成回避
+
+---
+
+## STS
+
+### sts_assume_role_client ― AssumeRoleで別アカウントのclient生成（クロスアカウント基本形）
+
+[`sts_assume_role_client.py`](sts/sts_assume_role_client.py)
+
+**インポートするモジュール**
+```python
+import boto3
+from botocore.exceptions import ClientError
+```
+
+
+- 別アカウントのロールの引き受け（`assume_role`）と一時クレデンシャルからの `boto3.Session` 生成
+- `ExternalId`・`RoleSessionName`・`DurationSeconds` の指定と CloudTrail での追跡
+- assume 前後のアイデンティティ確認（`get_caller_identity`）と AccessDenied 時のエラーハンドリング
+
+### sts_multi_account_scan ― 複数アカウントを横断して同一処理を回す（部分失敗を許容して継続）
+
+[`sts_multi_account_scan.py`](sts/sts_multi_account_scan.py)
+
+**インポートするモジュール**
+```python
+import boto3
+from botocore.exceptions import ClientError
+```
+
+
+- 複数アカウントを順に assume し、各アカウントで同一の調査処理（ECS の desired/running 乖離検出）を実行
+- アカウント ID とロール名から ARN を組み立てる汎用的な Session 生成
+- 1 アカウントの失敗で全体を止めず、エラーを記録して継続する集約レポートパターン
+
+### sts_credential_cache ― 一時クレデンシャルのキャッシュと自動更新（RefreshableCredentials）
+
+[`sts_credential_cache.py`](sts/sts_credential_cache.py)
+
+**インポートするモジュール**
+```python
+from datetime import datetime, timezone, timedelta
+import boto3
+from botocore.credentials import RefreshableCredentials
+from botocore.session import get_session
+from botocore.exceptions import ClientError
+```
+
+
+- 一時クレデンシャルの手動キャッシュ（期限＋安全マージンによる再利用／再取得判定）
+- botocore の `RefreshableCredentials` による期限接近時の自動リフレッシュ（client 再生成不要）
+- 長時間バッチ・横断処理での STS API コール削減とレイテンシ改善のパターン
 
 ---
 
