@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 import jwt
@@ -18,7 +18,9 @@ from security import hash_password, verify_password
 ALGORITHM = "HS256"
 SECRET_KEY = get_settings().secret_key.get_secret_value()
 
-oauth2_schema = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+_DUMMY_HASH = hash_password("dummy-password-for-timing-equalization")
 
 
 async def create_user(
@@ -34,7 +36,10 @@ async def create_user(
         await db.flush()
     except IntegrityError:
         await db.rollback()
-        raise
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="このユーザー名は既に使用されています",
+        ) from None
     await db.refresh(user)
     return user
 
@@ -45,10 +50,12 @@ async def authenticate_user(
     password: str
 ) -> User | None:
     result = await db.execute(
-        select(User).where(User.username == username)
+        select(User)
+        .where(User.username == username)
     )
     user = result.scalar_one_or_none()
     if user is None:
+        verify_password(password, _DUMMY_HASH)
         return None
 
     if not verify_password(password, user.password_hash):
@@ -61,16 +68,21 @@ def create_access_token(
     user_id: int,
     expires_delta: timedelta
 ) -> str:
-    expires = datetime.now(timezone.utc) + expires_delta
+    expires = datetime.now(UTC) + expires_delta
     payload = {"sub": username, "id": user_id, "exp": expires}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def get_current_user(
-    token: Annotated[str, Depends(oauth2_schema)]
+    token: Annotated[str, Depends(oauth2_scheme)]
 ) -> DecodedToken:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+            options={"require": ["exp", "sub"]},
+        )
         username = payload.get("sub")
         user_id = payload.get("id")
         if username is None or user_id is None:
@@ -86,4 +98,4 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"}
-        )
+        ) from None

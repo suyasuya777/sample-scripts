@@ -41,10 +41,9 @@ async def get_items(
 @router.get("/{item_id}", response_model=ItemResponse)
 async def get_item(
     db: DbDependency,
-    user: UserDependency,
     item_id: ItemId
 ):
-    item = await item_cruds.get_item(db, item_id, user.user_id)
+    item = await item_cruds.get_item_public(db, item_id)
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
     return item
@@ -83,7 +82,7 @@ async def update_item(
     item = await item_cruds.update_item(db, item_id, item_in, user.user_id)
 
     if not item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not updated")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
 
     await db.commit()
     return item
@@ -104,7 +103,11 @@ async def upload_item_image(
     new_url = await save_item_image(file, item_id)
     item = await item_cruds.set_item_image(db, item, new_url)
 
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception:
+        delete_item_image(new_url)
+        raise
 
     if old_url and old_url != new_url:
         delete_item_image(old_url)
@@ -113,13 +116,15 @@ async def upload_item_image(
 
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete(
+async def delete_item(
     db: DbDependency,
     user: UserDependency,
     item_id: ItemId
 ):
-    item = await item_cruds.delete_item(db, item_id, user.user_id)
-    if not item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not deleted")
+    deleted, image_url = await item_cruds.delete_item(db, item_id, user.user_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
 
     await db.commit()
+
+    delete_item_image(image_url)

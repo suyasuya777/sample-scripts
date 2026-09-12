@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import DateTime
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -43,15 +45,18 @@ class Item(TimestampMixin, Base):
     )
 
     status: Mapped[ItemStatusEnum] = mapped_column(
+        SAEnum(ItemStatusEnum, native_enum=False, length=20),
         default=ItemStatusEnum.ON_SALE
     )
 
     user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE")
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True
     )
 
     user: Mapped[User] = relationship(
-        back_populates="items"
+        back_populates="items",
+        lazy="raise_on_sql"
     )
 
 
@@ -72,5 +77,8 @@ class User(TimestampMixin, Base):
     )
 
     items: Mapped[list[Item]] = relationship(
-        back_populates="user"
+        back_populates="user",
+        lazy="raise_on_sql",
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )

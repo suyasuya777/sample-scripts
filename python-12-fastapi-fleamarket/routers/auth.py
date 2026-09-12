@@ -3,12 +3,15 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from config import get_settings
 from cruds import auth as auth_cruds
 from database import get_db
-from schemas import Token, UserCreate, UserResponse
+from models import User
+from schemas import Token, UserCreate
+
+settings = get_settings()
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -23,17 +26,22 @@ FormDependency = Annotated[
 ]
 
 
-@router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def _issue_token(user: User) -> Token:
+    token = auth_cruds.create_access_token(
+        user.username,
+        user.id,
+        timedelta(minutes=settings.access_token_expire_minutes),
+    )
+    return Token(access_token=token, token_type="bearer")
+
+
+@router.post("/signup", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def create_user(db: DbDependency, user_in: UserCreate):
-    try:
-        user = await auth_cruds.create_user(db, user_in)
-    except IntegrityError:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Username already exists",
-        )
+    """ユーザーを作成し、そのままログイン済みにするためのトークンを返す"""
+    user = await auth_cruds.create_user(db, user_in)
     await db.commit()
-    return user
+    return _issue_token(user)
+
 
 @router.post("/login", response_model=Token)
 async def login_user(
@@ -48,7 +56,4 @@ async def login_user(
             headers={"WWW-Authenticate": "Bearer"}
         )
 
-    token = auth_cruds.create_access_token(
-        user.username, user.id, timedelta(minutes=20)
-    )
-    return {"access_token": token, "token_type": "bearer"}
+    return _issue_token(user)

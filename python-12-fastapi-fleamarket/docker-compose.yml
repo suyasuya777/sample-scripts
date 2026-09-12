@@ -1,4 +1,3 @@
-version: "3.7"
 services:
   postgres:
     image: postgres:16-alpine
@@ -7,7 +6,7 @@ services:
       - 5432:5432
     volumes:
       - ./docker/postgres/init.d:/docker-entrypoint-initdb.d
-      - ./docker/postgres/pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: fastapiuser
       POSTGRES_PASSWORD: fastapipass
@@ -15,10 +14,15 @@ services:
       POSTGRES_DB: fleamarket
     hostname: postgres
     restart: always
-    user: root
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fastapiuser -d fleamarket"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   pgadmin:
     image: dpage/pgadmin4
+    container_name: pgadmin
     restart: always
     ports:
       - 81:80
@@ -26,6 +30,11 @@ services:
       PGADMIN_DEFAULT_EMAIL: fastapi@example.com
       PGADMIN_DEFAULT_PASSWORD: password
     volumes:
-      - ./docker/pgadmin:/var/lib/pgadmin
+      - pgadmin:/var/lib/pgadmin
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  pgadmin:

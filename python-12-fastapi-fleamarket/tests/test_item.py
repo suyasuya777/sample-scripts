@@ -62,7 +62,7 @@ async def test_update_正常系(client_fixture: AsyncClient):
 async def test_update_異常系(client_fixture: AsyncClient):
     response = await client_fixture.patch("/items/10", json={"name": "スマホ", "price": 5000})
     assert response.status_code == 404
-    assert response.json()["detail"] == "Item not updated"
+    assert response.json()["detail"] == "Item not found"
 
 
 @pytest.mark.asyncio
@@ -77,4 +77,4 @@ async def test_delete_正常系(client_fixture: AsyncClient):
 async def test_delete_異常系(client_fixture: AsyncClient):
     response = await client_fixture.delete("/items/10")
     assert response.status_code == 404
-    assert response.json()["detail"] == "Item not deleted"
+    assert response.json()["detail"] == "Item not found"

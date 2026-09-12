@@ -92,8 +92,8 @@
         <input class="input" id="auth-password" name="password" type="password" autocomplete="off" minlength="8" maxlength="255" required>
       </div>
 
-      <!-- type="button" + onclick : フォーム送信を一切起こさず、JS で処理する -->
-      <button class="btn btn--block btn--lg" id="auth-submit" type="button" onclick="submitAuth(event)">ログイン</button>
+      <!-- type="button" + JS側で結線。onclick 属性は IIFE 内の関数を参照できないため使わない -->
+      <button class="btn btn--block btn--lg" id="auth-submit" type="button">ログイン</button>
     </form>
   </dialog>
 
@@ -145,7 +145,7 @@
 
       <div class="dialog__foot">
         <button type="button" class="btn btn--ghost" data-close style="color:var(--ink-soft);border-color:var(--line);">やめる</button>
-        <button class="btn btn--amber" id="item-submit" type="button" onclick="submitItem(event)">この内容で出品する</button>
+        <button class="btn btn--amber" id="item-submit" type="button">この内容で出品する</button>
       </div>
     </form>
   </dialog>
@@ -441,17 +441,18 @@
     btn.textContent = "処理中…";
     errEl.hidden = true;
     try {
+      let tok;
       if (authMode === "signup") {
-        authStatus("① 新規登録を送信中…");
-        await api("/auth/signup", { method: "POST", json: { username, password } });
-        authStatus("② 登録OK。ログイン中…");
+        // 登録レスポンスにトークンが含まれるため、続けてログインする必要はない
+        authStatus("新規登録中…");
+        tok = await api("/auth/signup", { method: "POST", json: { username, password } });
       } else {
         authStatus("ログイン中…");
+        tok = await api("/auth/login", { method: "POST", form: { username, password } });
       }
-      const tok = await api("/auth/login", { method: "POST", form: { username, password } });
-      if (!tok || !tok.access_token) throw new ApiError("ログイン応答に access_token がありません", 0);
+      if (!tok || !tok.access_token) throw new ApiError("応答に access_token がありません", 0);
       setToken(tok.access_token);
-      authStatus("③ トークン取得・ログイン完了");
+      authStatus("ログイン完了");
       authDialog.close();
       renderAccount();
       renderItems();
@@ -528,7 +529,7 @@
       } else {
         // 編集：本文は JSON。画像を選び直したときだけ差し替え送信
         const status = $("#item-status").value;
-        await api(`/items/${editingId}`, { method: "PUT", auth: true, json: { name, price, description: description || null, status } });
+        await api(`/items/${editingId}`, { method: "PATCH", auth: true, json: { name, price, description: description || null, status } });
         if (file) {
           const fd = new FormData();
           fd.append("file", file);
@@ -618,9 +619,11 @@
 
     $("#tab-login").addEventListener("click", () => setAuthMode("login"));
     $("#tab-signup").addEventListener("click", () => setAuthMode("signup"));
-    // 念のため click でも結線（onclick 属性と二重だが authBusy で安全）
     $("#auth-submit").addEventListener("click", (e) => { e.preventDefault(); submitAuth(e); });
     $("#item-submit").addEventListener("click", (e) => { e.preventDefault(); submitItem(e); });
+    // Enterキーでの送信もJS側で受ける（ネイティブ送信によるページ遷移を防ぐ）
+    $("#auth-form").addEventListener("submit", (e) => { e.preventDefault(); submitAuth(e); });
+    $("#item-form").addEventListener("submit", (e) => { e.preventDefault(); submitItem(e); });
     $("#item-image").addEventListener("change", onImagePicked);
 
     $("#confirm-ok").addEventListener("click", doDelete);

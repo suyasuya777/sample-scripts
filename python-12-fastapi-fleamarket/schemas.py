@@ -6,14 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from enums import ItemStatusEnum
 
-ItemId = Annotated[
-    int,
-    Field(
-        gt=0,
-        examples=[1]
-    )
-]
-
 ItemName = Annotated[
     str,
     Field(
@@ -39,13 +31,6 @@ ItemOptionalDescription = Annotated[
     )
 ]
 
-ItemStatus = Annotated[
-    ItemStatusEnum,
-    Field(
-        examples=[ItemStatusEnum.ON_SALE]
-    )
-]
-
 ItemOptionalName = Annotated[
     str | None,
     Field(
@@ -67,14 +52,6 @@ ItemOptionalStatus = Annotated[
     ItemStatusEnum | None,
     Field(
         examples=[ItemStatusEnum.ON_SALE]
-    )
-]
-
-UserId = Annotated[
-    int,
-    Field(
-        gt=0,
-        examples=[1]
     )
 ]
 
@@ -121,6 +98,7 @@ def item_create_form(
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=e.errors(include_url=False))
 
+
 class ItemUpdate(StrippedBaseModel):
     name: ItemOptionalName = None
     price: ItemOptionalPrice = None
@@ -128,15 +106,18 @@ class ItemUpdate(StrippedBaseModel):
     status: ItemOptionalStatus = None
 
 
-class ItemResponse(ItemBase):
-    id: ItemId
-    status: ItemStatus
-    image_url: str | None = None
+class ItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    price: int
+    description: str | None
+    status: ItemStatusEnum
+    image_url: str | None
     created_at: datetime
     updated_at: datetime
     user_id: int
-
-    model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
 
 
 class UserCreate(StrippedBaseModel):
@@ -144,13 +125,13 @@ class UserCreate(StrippedBaseModel):
     password: Password
 
 
-class UserResponse(StrippedBaseModel):
-    id: UserId
-    username: Username
+class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    username: str
     created_at: datetime
     updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
 
 
 class Token(StrippedBaseModel):

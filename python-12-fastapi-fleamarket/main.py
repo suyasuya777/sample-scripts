@@ -1,5 +1,4 @@
 import time
-from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,13 +8,9 @@ from config import get_settings
 from routers import auth, item
 from storage import UPLOAD_ROOT, ensure_dirs
 
+ensure_dirs()
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    ensure_dirs()
-    yield
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 settings = get_settings()
 
@@ -30,10 +25,11 @@ app.add_middleware(
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
-    start_time = time.time()
+    start_time = time.perf_counter()
     response = await call_next(request)
-    process_time = time.time() - start_time
-    response.headers["X-Process-Time"] = str(process_time)
+    process_time = time.perf_counter() - start_time
+    response.headers["X-Process-Time"] = f"{process_time:.4f}"
+    response.headers["X-Content-Type-Options"] = "nosniff"
     return response
 
 
