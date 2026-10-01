@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: local
+      LOG_LEVEL: INFO
+    # SIGTERM から SIGKILL までの猶予。ECS の stopTimeout に相当する
+    stop_grace_period: 90s
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/readyz').status==200 else 1)\""]
+      interval: 10s
+      timeout: 3s
+      retries: 2
+      start_period: 10s
+    restart: unless-stopped

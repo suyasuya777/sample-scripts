@@ -1,0 +1,54 @@
+# terraform.tfvars にリネームして使う
+
+region      = "ap-northeast-1"
+name_prefix = "lambda-study"
+
+# Lambda 実務サンプル集を展開したディレクトリの絶対パス（末尾スラッシュなし）
+# 例: /home/nakata/lambda-samples
+samples_dir = "/path/to/lambda-samples"
+
+# SNS購読・SES送信に使う。2月に SES で検証済みのアドレスを指定すること
+notification_email = "your-address@example.com"
+
+# Cognito Pre Sign-up トリガで許可するドメイン（3/12 の演習で使う）
+allowed_signup_domain = "example.com"
+
+# ------------------------------------------------------
+# 環境タイムライン（該当日に true にして apply）
+# ------------------------------------------------------
+# 3/1 (月)  基盤（フラグなし。apply した時点で作られる）
+# 3/4 (木)  enable_s3_sns      = true
+# 3/10(水)  enable_apigw       = true
+# 3/11(木)  enable_cognito     = true
+# 3/15(月)  enable_sqs         = true
+# 3/18(木)  enable_dynamodb    = true
+# 3/22(月)  enable_integration = true
+# 3/25(木)  enable_rds         = true   ← 3/26 の作業後に false に戻して apply
+# 3/28(日)  enable_sfn         = true
+# 3/29(月)  enable_powertools  = true
+# 3/31(水)  terraform destroy
+
+enable_s3_sns      = false
+enable_apigw       = false
+enable_cognito     = false
+enable_sqs         = false
+enable_dynamodb    = false
+enable_integration = false
+enable_rds         = false
+enable_sfn         = false
+enable_powertools  = false
+
+# RDS Proxy を作るか（約 $0.7/日）。費用を抑えるなら false にして
+# 「接続プーリングが必要な理由を説明できる」までに留める
+enable_rds_proxy = true
+
+# ------------------------------------------------------
+# 調整用
+# ------------------------------------------------------
+# Powertools マネージドレイヤーのバージョン。必ず最新値を確認して更新すること
+#   aws lambda list-layer-versions --layer-name \
+#     arn:aws:lambda:ap-northeast-1:017000801446:layer:AWSLambdaPowertoolsPythonV3-python312-x86_64
+powertools_layer_version = 3
+
+log_retention_days = 7
+# db_password = "StudyOnly12345!"   # state に平文で入る。学習用アカウント限定

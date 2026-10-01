@@ -7,9 +7,31 @@ athena_workgroup_named_query.py ― ワークグループと名前付きクエ�
   - ワークグループ作成（結果出力先・スキャン量上限・コスト制御）
   - 名前付きクエリの登録 / 一覧 / 取得
   - ワークグループ内のクエリ実行履歴の確認
+
+--------------------------------------------------------------------
+実行前に下の「設定」を terraform output の値に置き換えること:
+
+  terraform output -raw athena_results_location    -> OUTPUT_LOCATION
+
+ここで作ったワークグループは Terraform 管理外。3/14 の破棄チェックリストで
+手動削除すること（aws athena list-work-groups / delete-work-group）。
+--------------------------------------------------------------------
 """
 import boto3
 from botocore.exceptions import ClientError
+
+# ====================== 設定 ======================
+REGION = "ap-northeast-1"
+DATABASE = "boto3_study"          # athena_create_projection_table.py で作ったもの
+TABLE = "alb_logs"
+WORKGROUP = "boto3-study-incident"
+
+# terraform output -raw athena_results_location
+OUTPUT_LOCATION = "s3://REPLACE-ME-athena/query-results/"
+
+# 1 クエリあたりのスキャン量上限（バイト）。学習環境のログは数MBなので 1GB で十分
+BYTES_SCANNED_CUTOFF = 1 * 1024 ** 3
+# ==================================================
 
 
 def ensure_workgroup(
@@ -87,51 +109,51 @@ def list_named_queries(client, workgroup: str) -> None:
 
 
 def main() -> None:
-    region = "ap-northeast-1"
-    database = "log_analysis"
-    workgroup = "incident-investigation"
-    output_location = "s3://your-athena-results-bucket/query-results/"
+    if "REPLACE-ME" in OUTPUT_LOCATION:
+        print("[ERROR] OUTPUT_LOCATION を terraform output の値に置き換えてください")
+        print("        terraform output -raw athena_results_location")
+        return
 
-    client = boto3.client("athena", region_name=region)
+    client = boto3.client("athena", region_name=REGION)
 
     try:
-        # 1) ワークグループ作成（1 クエリ 10GB でカット）
+        # 1) ワークグループ作成（スキャン量上限付き）
         ensure_workgroup(
             client,
-            name=workgroup,
-            output_location=output_location,
-            bytes_scanned_cutoff=10 * 1024**3,
+            name=WORKGROUP,
+            output_location=OUTPUT_LOCATION,
+            bytes_scanned_cutoff=BYTES_SCANNED_CUTOFF,
         )
 
         # 2) 障害調査の定番クエリを登録
         register_named_query(
             client,
             name="alb_5xx_by_day",
-            database=database,
+            database=DATABASE,
             sql=(
-                "SELECT time, elb_status_code, target_status_code, request_url "
-                "FROM alb_logs WHERE day = ? AND elb_status_code >= 500 "
-                "ORDER BY time LIMIT 100"
+                f"SELECT time, elb_status_code, target_status_code, request_url "
+                f"FROM {TABLE} WHERE day = '2027/02/28' AND elb_status_code >= 500 "
+                f"ORDER BY time LIMIT 100"
             ),
-            workgroup=workgroup,
-            description="指定日の ALB 5xx を抽出",
+            workgroup=WORKGROUP,
+            description="指定日の ALB 5xx を抽出（day は使う前に書き換える）",
         )
         register_named_query(
             client,
             name="alb_slow_targets",
-            database=database,
+            database=DATABASE,
             sql=(
-                "SELECT time, target_processing_time, request_url "
-                "FROM alb_logs WHERE day = ? "
-                "AND target_processing_time > 1.0 "
-                "ORDER BY target_processing_time DESC LIMIT 100"
+                f"SELECT time, target_processing_time, request_url "
+                f"FROM {TABLE} WHERE day = '2027/02/28' "
+                f"AND target_processing_time > 1.0 "
+                f"ORDER BY target_processing_time DESC LIMIT 100"
             ),
-            workgroup=workgroup,
+            workgroup=WORKGROUP,
             description="ターゲット処理時間 1 秒超の遅いリクエスト",
         )
 
         # 3) 登録済みクエリの一覧
-        list_named_queries(client, workgroup)
+        list_named_queries(client, WORKGROUP)
 
     except ClientError as e:
         print(f"[ERROR] {e.response['Error']['Code']}: {e}")

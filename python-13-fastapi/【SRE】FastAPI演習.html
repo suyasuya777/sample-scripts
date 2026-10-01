@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>【SRE】FastAPI 演習</title>
+<style>
+:root{
+  --bg:#E8ECF0; --panel:#FFFFFF; --ink:#1B2733; --sub:#5A6878; --line:#CDD5DD;
+  --accent:#05877A; --accent-soft:#DDF1EE;
+  --r0:#C0453A; --r1:#C98718; --r2:#2F6DB0; --r3:#1E8A57;
+  --r0-soft:#F7E3E1; --r3-soft:#DFF1E7;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);
+  font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI",Meiryo,sans-serif;
+  font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased}
+code{font-family:"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;font-size:.88em;
+  background:#EEF2F5;border:1px solid #DCE3E9;border-radius:4px;padding:0 .3em;word-break:break-all}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,label:focus-within{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px 64px}
+
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:8px 0 16px;border-bottom:2px solid var(--ink);margin-bottom:24px}
+h1{margin:0;font-size:1.45rem;line-height:1.3;letter-spacing:.02em}
+h1 small{display:block;font-size:.8rem;font-weight:400;color:var(--sub);letter-spacing:0}
+nav{display:flex;gap:4px}
+nav button{background:none;border:1px solid transparent;border-radius:6px;padding:6px 14px;color:var(--sub)}
+nav button[aria-current="page"]{border-color:var(--ink);color:var(--ink);font-weight:700;background:var(--panel)}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px}
+h2{font-size:1.05rem;margin:0 0 12px}
+.muted{color:var(--sub);font-size:.88rem}
+
+/* 分布バー：ジャンルごとのランク内訳 */
+.genres{list-style:none;margin:0;padding:0}
+.genres li{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:center;
+  padding:10px 0;border-bottom:1px solid #E6EBF0}
+.genres li:last-child{border-bottom:none}
+.genres input{width:18px;height:18px;accent-color:var(--accent)}
+.gname{font-weight:600}
+.gname .num{display:inline-block;min-width:2.2em;color:var(--sub);font-weight:400}
+.dist{grid-column:2;display:flex;height:10px;border-radius:5px;overflow:hidden;background:#E6EBF0}
+.dist span{display:block;height:100%}
+.gmeta{grid-column:2;font-size:.8rem;color:var(--sub)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--sub);margin:8px 0 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--ink);border-radius:8px;overflow:hidden}
+.seg label{padding:8px 16px;cursor:pointer;border-left:1px solid var(--ink)}
+.seg label:first-child{border-left:none}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label:has(input:checked){background:var(--ink);color:#fff}
+.btn{border:1px solid var(--ink);background:var(--panel);border-radius:8px;padding:9px 18px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+.btn.small{padding:5px 12px;font-size:.88rem}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.section{margin-top:18px}
+
+/* 出題画面 */
+.qhead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;font-size:.88rem;color:var(--sub)}
+.progress{height:4px;background:#D5DCE3;border-radius:2px;overflow:hidden;margin-bottom:18px}
+.progress div{height:100%;background:var(--accent);transition:width .25s}
+.meter{display:inline-flex;align-items:center;gap:6px;font-weight:700}
+.meter .bars{display:inline-flex;gap:3px}
+.meter .bars b{width:14px;height:8px;border-radius:2px;background:#D5DCE3}
+.qtext{font-size:1.08rem;font-weight:600;margin:0 0 18px;white-space:pre-wrap}
+.opts{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.opt{width:100%;text-align:left;display:grid;grid-template-columns:2em 1fr;gap:8px;align-items:start;
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.opt:hover:not(:disabled){border-color:var(--ink)}
+.opt .k{font-weight:700;color:var(--sub)}
+.opt:disabled{cursor:default}
+.opt.correct{border:2px solid var(--r3);background:var(--r3-soft)}
+.opt.wrong{border:2px solid var(--r0);background:var(--r0-soft)}
+.feedback{margin-top:18px;border-left:4px solid var(--r3);padding:4px 0 4px 14px}
+.feedback.ng{border-left-color:var(--r0)}
+.verdict{font-weight:700;font-size:1.05rem;margin:0}
+.rankmove{font-size:.9rem;color:var(--sub);margin:0 0 8px}
+.expl{margin:0 0 8px}
+.ref{font-size:.85rem;color:var(--sub);margin:0}
+.actions{display:flex;justify-content:space-between;gap:10px;margin-top:20px;flex-wrap:wrap}
+
+/* 結果画面 */
+.complete{border:2px solid var(--r3);background:var(--r3-soft);border-radius:10px;padding:18px 20px;margin-bottom:16px}
+.complete p{margin:0}
+.complete .big{font-size:1.6rem;font-weight:800;color:var(--r3);letter-spacing:.04em}
+.score{font-size:2.2rem;font-weight:800;line-height:1.2;margin:0}
+.missed{margin:12px 0 0;padding-left:1.2em}
+.missed li{margin:4px 0}
+
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{padding:8px 6px;border-bottom:1px solid #E6EBF0;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+thead th{font-weight:600;color:var(--sub);border-bottom:1px solid var(--ink)}
+tfoot td{font-weight:700;border-top:1px solid var(--ink);border-bottom:none}
+.tscroll{overflow-x:auto}
+textarea{width:100%;min-height:120px;font-family:Menlo,Consolas,monospace;font-size:.8rem;border:1px solid var(--line);border-radius:6px;padding:8px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:#fff;
+  padding:8px 16px;border-radius:8px;font-size:.9rem;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.hidden{display:none!important}
+@media (max-width:520px){ .wrap{padding:14px 12px 48px} .panel{padding:16px} .score{font-size:1.8rem} }
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>FastAPI 演習<small>SRE 視点版スキルマップ 7章</small></h1>
+    <nav aria-label="画面切り替え">
+      <button id="navQuiz" aria-current="page">演習</button>
+      <button id="navStats">学習成績</button>
+    </nav>
+  </header>
+  <main id="app"></main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* =====================================================================
+   ジャンル
+   ===================================================================== */
+const GENRES = [
+  {no:"01", name:"ライフサイクル", dir:"01_lifecycle"},
+  {no:"02", name:"外向き通信", dir:"02_outbound"},
+  {no:"03", name:"観測可能性", dir:"03_observability"},
+  {no:"04", name:"失敗の表現", dir:"04_failure"},
+  {no:"05", name:"非同期処理の落とし穴", dir:"05_async_pitfalls"},
+  {no:"06", name:"コンテナ化と実行環境", dir:"06_runtime"},
+  {no:"07", name:"統合アプリ", dir:"07_integrated"},
+];
+const RANKS = ["ミス","ジャブ","ヒット","コンボ"];
+
+/* =====================================================================
+   問題  c: 正解 / w: 誤答3つ / e: 解説 / r: 参照
+   ===================================================================== */
+const Q = [
+/* ---------------- 01 lifecycle ---------------- */
+{id:"01-01",g:0,q:"graceful shutdown の4段階として、正しい順序はどれか。",
+ c:"readiness を 503 にする → LB が外すのを待つ → 処理中リクエストの完了を待つ → リソースを閉じる",
+ w:["処理中リクエストの完了を待つ → readiness を 503 にする → LB が外すのを待つ → リソースを閉じる",
+    "readiness を 503 にする → リソースを閉じる → LB が外すのを待つ → 処理中リクエストの完了を待つ",
+    "LB が外すのを待つ → readiness を 503 にする → リソースを閉じる → 処理中リクエストの完了を待つ"],
+ e:"先に readiness を落として LB に「もう振らないで」と伝え、実際に外れるまで待ってから処理中を待ち、最後に接続プールなどを閉じる。受け口やリソースを先に閉じると、LB がまだ振ってくるリクエストが 502 になる。",
+ r:"01_lifecycle/graceful_shutdown/graceful_shutdown.py"},
+{id:"01-02",g:0,q:"「SIGTERM を受けたら即座にプロセスを閉じる」実装で、デプロイのたびに 502 が出る主な理由はどれか。",
+ c:"SIGTERM の時点ではまだターゲットとして登録され、新規リクエストが届くから",
+ w:["SIGTERM が ALB にも伝わり、ALB 自身が一時的に 502 を返すから",
+    "SIGTERM を受けると uvicorn が /readyz に 200 を返し続けるから",
+    "SIGTERM を受けたタスクには、ECS が新しい IP を割り当て直すから"],
+ e:"SIGTERM はタスク側だけの出来事で、LB から見ればまだ健全なターゲット。先に readiness を落とし、外れるまで待つ必要がある。",
+ r:"01_lifecycle/graceful_shutdown/graceful_shutdown.py"},
+{id:"01-03",g:0,q:"lifespan の起動処理で、外部 API や DB への疎通確認を行わない理由として最も適切なものはどれか。",
+ c:"依存先の障害中に起動失敗と再起動のループに入り、復旧時も自動で戻りにくいから",
+ w:["lifespan の yield より前では await が使えず、疎通確認を書けないから",
+    "起動時に接続した DB コネクションは、リクエスト処理で再利用できないから",
+    "疎通確認の結果は app.state に保存できず、readiness から参照できないから"],
+ e:"原則は「起動は通す、readiness で落とす」。起動は成功させて readiness を 503 にしておけば、LB から外れたまま待機し、依存先の復旧と同時に自動で復帰できる。",
+ r:"01_lifecycle/lifespan_basics/lifespan_basics.py"},
+{id:"01-04",g:0,q:"/livez と /readyz の使い分けとして正しいものはどれか。",
+ c:"LB が振り分け判断に使うのは /readyz、オーケストレータが再起動判断に使うのは /livez",
+ w:["LB が振り分け判断に使うのは /livez、オーケストレータが再起動判断に使うのは /readyz",
+    "どちらも LB が使い、/livez は HTTP、/readyz は HTTPS 用に分ける",
+    "/livez は依存先の状態を見て、/readyz はプロセス生存だけを見る"],
+ e:"/livez はプロセス生存のみで依存先は一切見ない。依存先を見ると、DB 障害でタスクが再起動され続けることになる。/readyz は依存先とシャットダウン状態を見る。",
+ r:"01_lifecycle/health_endpoints/health_endpoints.py"},
+{id:"01-05",g:0,q:"readiness に DB 疎通を含めた構成で DB が落ちた。起きることとして教材が挙げているものはどれか。",
+ c:"全タスクが同時に unhealthy で LB から全台外れ、DB 復旧後も復帰が遅れる",
+ w:["unhealthy になったタスクから順に再起動され、DB 復旧と同時に全台が即座に戻る",
+    "DB 疎通に失敗したタスクだけが外れ、残りのタスクに負荷が集中して段階的に落ちる",
+    "readiness の失敗は LB に伝わらないため、利用者への影響は発生しない"],
+ e:"依存先の障害が全タスク共通なので、全台同時に外れて 503 になる。判断基準は「この依存が死んだらサービスとして成立しないか」。読み取り専用で縮退運転できるなら含めないほうがよい。",
+ r:"01_lifecycle/health_endpoints/health_endpoints.py"},
+{id:"01-06",g:0,q:"readiness に依存先のチェックを含めるかどうかの判断基準として、教材の立場に合うものはどれか。",
+ c:"その依存なしでサービスが成立するかで決め、縮退できるなら含めない",
+ w:["依存先の SLA が自サービスの SLO より高ければ、含めてよい",
+    "同一 VPC 内の依存は含め、インターネット越しの依存は含めない",
+    "障害を早く検知するため、すべての依存を含めるのが原則である"],
+ e:"readiness に入れた依存は、その依存の障害が全台同時の切り離しに直結する。キャッシュが死んでも DB から読める、といった縮退ができるなら入れない判断になる。",
+ r:"01_lifecycle/health_endpoints/health_endpoints.py"},
+{id:"01-07",g:0,q:"次の設定で、シャットダウンの検算として確認すべき関係はどれか。\nヘルスチェック 10秒×2回、登録解除遅延 30秒、アプリのドレイン待機 20秒＋処理中待機 30秒、ECS stopTimeout 90秒",
+ c:"アプリが必要とする 50秒 ＜ stopTimeout 90秒",
+ w:["登録解除遅延 30秒 ＜ ヘルスチェック検知時間 20秒",
+    "stopTimeout 90秒 ＜ 登録解除遅延 30秒 ＋ ドレイン待機 20秒",
+    "ドレイン待機 20秒 ＞ stopTimeout 90秒 ÷ ヘルスチェック回数"],
+ e:"SIGTERM から SIGKILL までの猶予が stopTimeout。アプリのシャットダウン所要時間がこれを超えると、処理の途中で強制終了される。",
+ r:"01_lifecycle/README.md"},
+{id:"01-08",g:0,q:"アプリのシャットダウン所要時間が ECS の stopTimeout より長いと、何が起きるか。",
+ c:"stopTimeout 経過時点で SIGKILL され、処理中のリクエストが切れる",
+ w:["ECS が stopTimeout を自動で延長し、処理中のリクエストの完了まで待つ",
+    "SIGTERM が再送され、アプリはシャットダウン処理を最初からやり直す",
+    "タスクは DRAINING のまま残り、手動で停止するまで課金が続く"],
+ e:"逆転していると、コード上は丁寧に待っていても最後は強制終了になる。デプロイ時 5xx の原因候補として、この逆転は必ず検算する。",
+ r:"01_lifecycle/README.md"},
+{id:"01-09",g:0,q:"Fargate で設定できる stopTimeout の最大値はどれか。",
+ c:"120秒", w:["30秒","60秒","300秒"],
+ e:"Fargate の stopTimeout は最大 120秒。ドレイン待機と処理中待機の合計はこの範囲に収める必要がある。",
+ r:"01_lifecycle/README.md"},
+{id:"01-10",g:0,q:"graceful_shutdown.py の処理中カウント用ミドルウェアが、/livez と /readyz を数えない理由として最も適切なものはどれか。",
+ c:"ヘルスチェックは常に届くので、数えると処理中が 0 になりにくく、③の待機が上限まで伸びるから",
+ w:["ヘルスチェックは lifespan の外で処理され、アプリのミドルウェアを通らないから",
+    "ヘルスチェックを数えると、readiness が 503 を返せなくなるから",
+    "ヘルスチェックのリクエストには request_id が付かず、集計できないから"],
+ e:"③は「処理中が 0 になるか、上限時間に達するまで待つ」ループ。LB やオーケストレータのヘルスチェックを数に入れると、本物の処理が終わっても待ちが続く。",
+ r:"01_lifecycle/graceful_shutdown/graceful_shutdown.py"},
+{id:"01-11",g:0,q:"uvicorn の --timeout-graceful-shutdown を、アプリ側で処理中リクエストを待つ時間より短く設定すると、どうなるか。",
+ c:"処理中のリクエストが残っていても、uvicorn 側の猶予が尽きた時点で打ち切られる",
+ w:["uvicorn は長いほうの値に合わせて自動で待ち時間を延ばす",
+    "SIGTERM を受け付けなくなり、ECS の stopTimeout に達するまで何も起きない",
+    "処理中リクエストは別のワーカーへ引き継がれて完走する"],
+ e:"待ち時間は、アプリ・uvicorn・ECS の stopTimeout がすべて噛み合って初めて成立する。どれか1つが短いと、そこで切れる。",
+ r:"01_lifecycle/graceful_shutdown/graceful_shutdown.py"},
+
+/* ---------------- 02 outbound ---------------- */
+{id:"02-01",g:1,q:"リクエストごとに `async with httpx.AsyncClient()` でクライアントを作って捨てる実装の問題点として、教材が挙げる3つの組み合わせはどれか。",
+ c:"TLS ハンドシェイクでのレイテンシ増、エフェメラルポート枯渇、SNAT ポート枯渇",
+ w:["GIL の競合によるスループット低下、DNS キャッシュの汚染、ヒープメモリのリーク",
+    "TLS 証明書の検証失敗、HTTP/2 の無効化、レスポンスボディの文字化け",
+    "同時接続数の減少によるスループット低下、タイムアウト設定の無効化、アクセスログの欠落"],
+ e:"毎回 TCP＋TLS のハンドシェイクが走り、接続はすぐ捨てられる。いずれもアプリのバグではなくネットワーク層の枯渇として現れ、アプリログには何も出ないため調査が難しい。",
+ r:"02_outbound/shared_client/shared_client.py"},
+{id:"02-02",g:1,q:"NAT Gateway 経由の通信で SNAT ポート枯渇を疑うとき、確認する CloudWatch メトリクスはどれか。",
+ c:"ErrorPortAllocation", w:["IdleTimeoutCount","PacketsDropCount","ActiveConnectionCount"],
+ e:"ErrorPortAllocation は、NAT Gateway が送信元ポートを割り当てられなかった回数。同一宛先への短命な接続を大量に作る実装で増える。",
+ r:"02_outbound/shared_client/shared_client.py"},
+{id:"02-03",g:1,q:"`httpx.Limits(max_connections=100)` を持つ共有クライアントで、ECS タスクを 20 に増やした。呼び出し先から見た同時接続数の最大はいくつか。",
+ c:"2,000", w:["100","120","5"],
+ e:"プールはタスク（プロセス）ごとに独立している。20 × 100 = 2,000。呼び出し先が 500 しか捌けないなら、こちらが相手を落とす側になる。",
+ r:"02_outbound/shared_client/shared_client.py"},
+{id:"02-04",g:1,q:"httpx の `max_keepalive_connections` の意味として正しいものはどれか。",
+ c:"アイドル時に維持しておく接続の数",
+ w:["このクライアントが同時に張る接続の上限",
+    "Keep-Alive で接続を維持しておく秒数",
+    "プールから接続を借りるまで待つ上限時間"],
+ e:"同時接続の上限は max_connections。max_keepalive_connections は、使っていない接続をどれだけ捨てずに持っておくか。",
+ r:"02_outbound/shared_client/shared_client.py"},
+{id:"02-05",g:1,q:"httpx の4分類のタイムアウトのうち、「自分側が詰まっている」ときに効くものはどれか。",
+ c:"pool：プールから接続を借りられるまで", w:["connect：TCP 接続が確立するまで","read：レスポンスの次の1バイトが届くまで","write：リクエストを送り終えるまで"],
+ e:"connect は相手が落ちている・SG で落ちている場合、read は相手が遅い場合、write は大きなボディ送信時、pool は自分のプールが使い切られている場合に効く。",
+ r:"02_outbound/timeout_layers/timeout_layers.py"},
+{id:"02-06",g:1,q:"httpx の read タイムアウト 5秒の意味として正しいものはどれか。",
+ c:"レスポンスの次の1バイトが届くまでの待ち時間が5秒を超えたら失敗する",
+ w:["リクエスト送信からレスポンス全体の受信完了までが5秒を超えたら失敗する",
+    "TCP 接続の確立からレスポンス受信完了までが5秒を超えたら失敗する",
+    "接続がアイドル状態のまま5秒経過したら、その接続を閉じる"],
+ e:"read は「全体の所要時間」ではなく「データが途切れている時間」。少しずつ送り続けてくる相手には、全体として5秒を大きく超えても発火しない。",
+ r:"02_outbound/timeout_layers/timeout_layers.py"},
+{id:"02-07",g:1,q:"read タイムアウトだけ設定し、connect を無設定（None）にした場合のリスクはどれか。",
+ c:"相手が無応答のとき、接続確立の段階で無限に待ち続ける",
+ w:["read タイムアウトが connect にも自動で適用され、二重に待つ",
+    "接続確立に失敗したとき、例外が発生せず空のレスポンスが返る",
+    "connect が無設定だとプールが無効になり、毎回新規接続になる"],
+ e:"タイムアウトは分類ごとに効く範囲が違う。None は無限待ち。全部同じ値の `httpx.Timeout(5.0)` のほうがまだ安全。",
+ r:"02_outbound/timeout_layers/timeout_layers.py"},
+{id:"02-08",g:1,q:"タイムアウトの階層が逆転している（上流のほうが短い）ときに現れる症状として正しいものはどれか。",
+ c:"上流では 504、下流では正常終了と記録され、どちらのログも正しく見える",
+ w:["上流も下流も 504 を記録するため、原因の層がすぐ特定できる",
+    "下流が先に諦めて 502 を返し、上流はそのまま処理を続けて完了させる",
+    "逆転していても接続が再利用されるので、利用者への影響は出ない"],
+ e:"上流が諦めても下流の処理は走り続けるので、リソースだけが無駄に消費される。外側ほど長く、内側ほど短く、が鉄則。",
+ r:"02_outbound/timeout_layers/timeout_layers.py"},
+{id:"02-09",g:1,q:"ALB のアイドルタイムアウトとアプリ（uvicorn）の Keep-Alive タイムアウトの関係として、502 を避けるために正しいものはどれか。",
+ c:"アプリの Keep-Alive タイムアウトを、ALB のアイドルタイムアウトより長くする",
+ w:["アプリの Keep-Alive タイムアウトを、ALB のアイドルタイムアウトより短くする",
+    "両者を同じ値にそろえ、同時に接続が閉じられるようにする",
+    "両者は独立した設定なので、関係を気にする必要はない"],
+ e:"ALB はターゲットとの接続を使い回す。アプリ側が先にアイドル接続を閉じると、ALB がその接続でリクエストを送った瞬間に 502 になる。uvicorn の既定は5秒、ALB の既定は60秒なので、既定のままだと逆転している。注意：timeout_layers.py の記入表は uvicorn の --timeout-keep-alive を ALB より内側（短い側）に置いているが、Keep-Alive はこの一般則の例外で、逆向きが正しい。",
+ r:"02_outbound/timeout_layers/timeout_layers.py（12月 12/7 の検証と対応）"},
+{id:"02-10",g:1,q:"timeout_layers.py を記入表の初期値のまま実行すると、何が出力されるか。\n（クライアント60 / ALB 50 / uvicorn 45 / アプリ30 / 外部API 5 / DB 10）",
+ c:"「逆転: 外部API(5s) <= DB(10s)」の1行",
+ w:["「逆転なし」の1行",
+    "「逆転: ALB(50s) <= uvicorn(45s)」の1行",
+    "「逆転: アプリ(30s) <= DB(10s)」と「逆転: 外部API(5s) <= DB(10s)」の2行"],
+ e:"check_layers は隣り合う行を上から順に比べるだけ。外部 API と DB は入れ子ではなく、アプリから並列に呼ぶ兄弟なので、本来見るべきは「アプリ30秒 ＞ 外部API5秒」と「アプリ30秒 ＞ DB10秒」。実値で埋めるときは、並べ順と入れ子関係を分けて考える。",
+ r:"02_outbound/timeout_layers/timeout_layers.py"},
+{id:"02-11",g:1,q:"retry_backoff.py でリトライ対象になるものの組み合わせはどれか。",
+ c:"接続失敗・接続/読み取りタイムアウト・429・500/502/503/504",
+ w:["接続失敗・接続タイムアウト・400・404・500/502/503/504",
+    "読み取りタイムアウト・401・403・429・Retry-After 付きの 4xx",
+    "すべての例外とすべての 4xx・5xx"],
+ e:"4xx はリクエスト内容が原因なので、何度送っても結果は変わらない。例外は 429（Retry-After に従う）と 408。",
+ r:"02_outbound/retry_backoff/retry_backoff.py"},
+{id:"02-12",g:1,q:"400 / 401 / 403 / 404 をリトライしてはいけない理由として正しいものはどれか。",
+ c:"原因がリクエストの内容にあり、同じリクエストを何度送っても結果が変わらないから",
+ w:["4xx は相手が過負荷のときに返るため、リトライすると復旧を妨げるから",
+    "4xx の応答には Retry-After が付かないため、待ち時間を決められないから",
+    "4xx は TCP 接続が切断されたことを示し、同じ接続を再利用できないから"],
+ e:"リトライが効くのは「相手が一時的に不調」な場合だけ。4xx の中でも 429 と 408 は一時的な状況を示すので例外になる。",
+ r:"02_outbound/retry_backoff/retry_backoff.py"},
+{id:"02-13",g:1,q:"3層構成で、各層が `MAX_ATTEMPTS = 3`（総試行3回）でリトライする。最下層に届く最悪時のリクエスト数はいくつか。",
+ c:"27", w:["9","64","81"],
+ e:"1層あたり3回 × 3層 = 3×3×3 = 27（教材の amplification([3,3,3])）。「初回＋リトライ3回」と数えると1層4回なので 4×4×4 = 64 になる。「3回リトライ」がどちらを指すか、先に数え方をそろえるのが検算の第一歩。",
+ r:"02_outbound/retry_backoff/retry_backoff.py"},
+{id:"02-14",g:1,q:"retry_backoff.py の `backoff_delay(attempt=2)` が返す値はどれか。\n（BASE_DELAY=0.5、MAX_DELAY=8.0、フルジッタ）",
+ c:"0〜2.0秒の一様乱数", w:["2.0秒ちょうど","1.0〜3.0秒の一様乱数","0〜8.0秒の一様乱数"],
+ e:"capped = min(8.0, 0.5 × 2²) = 2.0。フルジッタは `random.uniform(0, capped)` なので 0〜2.0秒。",
+ r:"02_outbound/retry_backoff/retry_backoff.py"},
+{id:"02-15",g:1,q:"指数バックオフにジッタを加える目的として正しいものはどれか。",
+ c:"多数のクライアントの再試行時刻を散らし、リトライの波が揃うのを防ぐ",
+ w:["1回あたりの待機時間を必ず短くし、復旧までの時間を縮める",
+    "リトライ回数を確率的に減らし、総リクエスト数を半分にする",
+    "サーバ側のログで、リトライされたリクエストを識別できるようにする"],
+ e:"同じ時刻に失敗したクライアントが同じ間隔で再試行すると、波がそろって相手に同時に押し寄せる。乱数で時刻をばらけさせる。",
+ r:"02_outbound/retry_backoff/retry_backoff.py"},
+{id:"02-16",g:1,q:"retry_backoff.py の `get_with_retry` で、1回目が 429 を返し `Retry-After: 30` が付いていた。この実装はどう動くか。（TOTAL_BUDGET=10.0）",
+ c:"待機30秒が時間予算10秒を超えるため、待たずにリトライを打ち切って例外を送出する",
+ w:["30秒待ってから2回目を送る",
+    "Retry-After を無視し、バックオフの値だけ待って2回目を送る",
+    "429 はリトライ対象外なので、HTTPStatusError をそのまま送出する"],
+ e:"delay = max(バックオフ, 30) = 30。spent 0 + 30 ＞ 10 なので break し、`retry exhausted` の RuntimeError になる。予算は総試行回数だけでなく、総所要時間にも上限を置くためのもの。",
+ r:"02_outbound/retry_backoff/retry_backoff.py"},
+{id:"02-17",g:1,q:"circuit_breaker.py で、Half-Open 状態で試した呼び出しが失敗した。次の状態はどれか。",
+ c:"失敗回数にかかわらず、すぐに Open に戻る",
+ w:["失敗回数が閾値5に達するまで Half-Open のまま試行を続ける",
+    "Closed に戻り、失敗回数のカウントをやり直す",
+    "recovery_seconds が2倍になり、Half-Open のまま待機する"],
+ e:"`if self.state is State.HALF_OPEN or self.failures >= self.failure_threshold` なので、Half-Open での失敗は即 Open。成功すれば Closed に戻り、失敗数は0にリセットされる。",
+ r:"02_outbound/circuit_breaker/circuit_breaker.py"},
+{id:"02-18",g:1,q:"リトライとサーキットブレーカの前提の違いとして、教材の説明に合うものはどれか。",
+ c:"リトライは「相手はすぐ直る」、サーキットブレーカは「相手は当分直らない」を前提にしている",
+ w:["リトライは「相手は当分直らない」、サーキットブレーカは「相手はすぐ直る」を前提にしている",
+    "リトライは 5xx 用、サーキットブレーカは 4xx 用で、前提は同じである",
+    "どちらも「相手はすぐ直る」前提で、組み合わせる必要はない"],
+ e:"両方ないと、障害が長引いたときに自分の接続が呼び出し待ちで埋まり、相手の障害が自分の障害に変わる（カスケード障害）。Open はアラート対象にしておく。",
+ r:"02_outbound/circuit_breaker/circuit_breaker.py"},
+{id:"02-19",g:1,q:"非冪等な POST がタイムアウトした。この結果の解釈として正しいものはどれか。",
+ c:"結果は不明であり、サーバ側では処理が成功している可能性がある",
+ w:["タイムアウトなので失敗が確定しており、そのままリトライしてよい",
+    "タイムアウトは必ず接続確立前に起きるので、サーバには届いていない",
+    "HTTP の仕様上、タイムアウトした POST はサーバ側で自動的に取り消される"],
+ e:"「タイムアウトしたが実は成功していた」ケースでリトライすると、決済や在庫引当が二重に実行される。結果が不明な非冪等処理は、冪等キーなしにリトライしてはいけない。",
+ r:"02_outbound/idempotency_key/idempotency_key.py"},
+{id:"02-20",g:1,q:"idempotency_key.py に、保存済みのキーと同じ Idempotency-Key で、ボディだけ異なる POST が届いた。返るものはどれか。",
+ c:"409（key reused with different body）",
+ w:["201 と、前回と同じ order_id",
+    "201 と、新しい order_id",
+    "400（Idempotency-Key header required）"],
+ e:"キーが同じでボディが違うのはクライアント側の不具合として 409。キーもボディも同じなら処理をせず前回の結果を返し、キーがなければ 400。",
+ r:"02_outbound/idempotency_key/idempotency_key.py"},
+{id:"02-21",g:1,q:"idempotency_key.py の実処理を「await を伴う DB 書き込み」に置き換えた。初回の処理中に、同じキーで再送が届くとどうなるか。",
+ c:"結果の保存前なので重複チェックを素通りし、処理が2回実行される",
+ w:["asyncio が自動で排他するため、2本目は1本目の完了を待つ",
+    "2本目は保存済みのキーとみなされ、409 が返る",
+    "TTL の判定で2本目が弾かれ、400 が返る"],
+ e:"このサンプルはキーの保存を処理完了後に行っており、処理中を示す状態を持っていない。実運用では先に「処理中」を条件付き書き込み（DynamoDB の条件式など）で確保して排他する。また _STORE はプロセス内の辞書なので、タスクが複数あれば共有されない。1/8 の「排他制御を読む」はコードにないので、足りない部分として読むこと。",
+ r:"02_outbound/idempotency_key/idempotency_key.py"},
+
+/* ---------------- 03 observability ---------------- */
+{id:"03-01",g:2,q:"request_id.py の `extract_or_new` が request_id を決める優先順位として正しいものはどれか。",
+ c:"X-Amzn-Trace-Id の Root 値 → x-request-id ヘッダ → uuid4 で新規採番",
+ w:["x-request-id ヘッダ → X-Amzn-Trace-Id の Root 値 → uuid4 で新規採番",
+    "uuid4 で新規採番 → X-Amzn-Trace-Id の Root 値 → x-request-id ヘッダ",
+    "X-Amzn-Trace-Id の全体文字列 → x-request-id ヘッダ → uuid4 で新規採番"],
+ e:"ALB のアクセスログにある trace_id と同じ値をアプリログに持たせるため、ALB が付与する Root を最優先する。",
+ r:"03_observability/request_id/request_id.py"},
+{id:"03-02",g:2,q:"request_id の保持にグローバル変数ではなく ContextVar を使う理由はどれか。",
+ c:"async で並行に処理されるリクエストごとに、独立した値を持てるから",
+ w:["ContextVar はプロセスをまたいで値を共有でき、複数ワーカーでも同じ値になるから",
+    "ContextVar に入れた値は自動でログとレスポンスヘッダに出力されるから",
+    "グローバル変数は async def の中から読み書きできないから"],
+ e:"1つのイベントループで多数のリクエストが交互に進むので、グローバル変数だと別リクエストの ID で上書きされる。ContextVar はタスクごとに値が分かれる。",
+ r:"03_observability/request_id/request_id.py"},
+{id:"03-03",g:2,q:"障害調査で、ALB アクセスログとアプリログに同じ ID が必要な理由として教材が挙げているものはどれか。",
+ c:"秒間数百リクエストの環境では、時刻とパスだけで問題のリクエストを1本に特定できないから",
+ w:["ALB アクセスログには時刻が記録されず、ID でしか並べ替えられないから",
+    "アプリログは CloudWatch に、ALB ログは S3 に出るため、ID がないと保存できないから",
+    "ID がないと ALB がリクエストをターゲットに振り分けられないから"],
+ e:"調査の第一歩は「問題のリクエストを1本特定する」こと。さらに下流呼び出しのヘッダに載せて初めて、サービスをまたいで追える。",
+ r:"03_observability/request_id/request_id.py"},
+{id:"03-04",g:2,q:"json_logging.py が構造化ログの必須フィールドとして挙げている組み合わせはどれか。",
+ c:"timestamp・level・message・request_id・path・method・status・duration_ms",
+ w:["timestamp・level・message・hostname・process_id・thread・module・lineno",
+    "timestamp・message・user_id・email・path・status・body・headers",
+    "level・message・request_id・trace_id・span_id・cpu_percent・memory・disk"],
+ e:"障害時に Logs Insights で「5xx を時系列で出す」「パスごとの p99 を出す」ために必要な項目。ボディやヘッダの丸ごと出力は、マスキングの観点で避ける。",
+ r:"03_observability/json_logging/json_logging.py"},
+{id:"03-05",g:2,q:"アプリから CloudWatch API へ直接ログを送る方式（watchtower 等）が増やす failure mode として、教材が挙げる3つはどれか。",
+ c:"IAM 権限が必要になる、API 障害時にアプリが詰まる、強制終了でバッファが消える",
+ w:["ログが JSON にならない、request_id が付かない、タイムスタンプがずれる",
+    "標準出力が使えなくなる、ログレベルを変えられない、ローテーションが止まる",
+    "Logs Insights で検索できない、保持期間を設定できない、暗号化できない"],
+ e:"「アプリはログを書く、運ぶのは基盤の仕事」。ECS なら awslogs や FireLens ドライバに任せ、アプリは標準出力に出すだけにする。",
+ r:"03_observability/json_logging/json_logging.py"},
+{id:"03-06",g:2,q:"アクセスログを `response = await call_next(request)` の後にだけ書く実装の危険性はどれか。",
+ c:"call_next が例外を投げるとログに到達せず、500 がアクセスログに残らない",
+ w:["ログがレスポンス送信前に出力され、duration_ms が常に0になる",
+    "call_next の後ではヘッダを読めず、client_ip が記録できない",
+    "レスポンスが二重に送信され、クライアント側で接続リセットのエラーになる"],
+ e:"try/finally で必ず書く。access_log_middleware.py は status の既定値を 500 にしておき、例外で終わったリクエストも 500 として記録する。",
+ r:"03_observability/access_log_middleware/access_log_middleware.py"},
+{id:"03-07",g:2,q:"ALB の直後にある FastAPI に `X-Forwarded-For: 203.0.113.9, 198.51.100.7` が届いた。access_log_middleware.py が client_ip として記録する値はどれか。",
+ c:"198.51.100.7", w:["203.0.113.9","ALB のプライベート IP","request.client.host の値"],
+ e:"ALB は接続元 IP を右端に追記する。左側はクライアントが自由に書けるので偽装できる。信頼できるのは自分側のプロキシが付けた部分だけ。ただし CloudFront → ALB のように前段が増えると右端は CloudFront のエッジ IP になるので、信頼境界に合わせて右から何番目を採るかを変える。",
+ r:"03_observability/access_log_middleware/access_log_middleware.py（12月 12/9 と同じ論点）"},
+{id:"03-08",g:2,q:"アクセスログや RED メトリクスから /livez・/readyz を除外する主な理由はどれか。",
+ c:"常時届くヘルスチェックを記録すると、ログ量とコスト、集計のノイズが大きく増えるから",
+ w:["ヘルスチェックは HTTP/1.0 で届くため、ミドルウェアで解析できないから",
+    "ヘルスチェックを記録すると readiness の応答が遅れ、LB から外されるから",
+    "ヘルスチェックは ALB のアクセスログに記録されるので、二重になるから"],
+ e:"LB とオーケストレータが数秒おきに叩くので、放っておくと実リクエストより多くなることもある。SLI の分母にも混ぜない。",
+ r:"03_observability/access_log_middleware/access_log_middleware.py"},
+{id:"03-09",g:2,q:"ログに載せてはいけないものだけの組み合わせはどれか。",
+ c:"Authorization ヘッダ・Cookie・パスワード・カード番号",
+ w:["Authorization ヘッダ・request_id・status・duration_ms",
+    "User-Agent・path・パスワード・method",
+    "Cookie・timestamp・level・client_ip"],
+ e:"認証系（Authorization / Cookie / X-API-Key / セッションID）、資格情報（パスワード / トークン / 秘密鍵 / カード番号）、個人情報が対象。経路はヘッダ・クエリ文字列・ボディ・例外メッセージ。",
+ r:"03_observability/log_masking/log_masking.py"},
+{id:"03-10",g:2,q:"log_masking.py の `mask_body` に文字列 `taro@example.com` を渡すと、出力はどれか。",
+ c:"ta***om", w:["***","t***@example.com","taro@***"],
+ e:"メールアドレスは EMAIL_RE で検出され、mask_value で「先頭2文字＋***＋末尾2文字」になる。4文字以下なら *** だけ。キー名が password などに一致する値は、中身を見ずに *** になる。",
+ r:"03_observability/log_masking/log_masking.py"},
+{id:"03-11",g:2,q:"ログへの機密情報の流出で、教材が「典型的な経路」として挙げているものはどれか。",
+ c:"調査のために一時的に入れたリクエストボディの全文ログが、消し忘れられる",
+ w:["ログレベルを DEBUG にしたまま本番に出す",
+    "CloudWatch Logs の保持期間を無期限にしたままにする",
+    "ログを JSON 形式ではなく、プレーンテキストのまま標準出力に出す"],
+ e:"一度出たログは保持期間中ずっと残り、閲覧権限を持つ全員が見られる。出さないことより「出しても問題ない形に落としてから出す」マスク関数を必ず経由させるほうが運用として続く。",
+ r:"03_observability/log_masking/log_masking.py"},
+{id:"03-12",g:2,q:"RED メトリクスの3つの組み合わせとして正しいものはどれか。",
+ c:"Rate（リクエスト数）・Errors（失敗数）・Duration（処理時間の分布）",
+ w:["Requests（総数）・Errors（失敗数）・Delay（平均遅延）",
+    "Rate（リクエスト数）・Exceptions（例外数）・Disk（ディスク使用量）",
+    "Retries（リトライ数）・Errors（失敗数）・Duration（平均処理時間）"],
+ e:"Duration は平均ではなくヒストグラムで持つ。red_metrics.py では Counter `http_requests_total` と Histogram `http_request_duration_seconds` で表現している。",
+ r:"03_observability/red_metrics/red_metrics.py"},
+{id:"03-13",g:2,q:"99% のリクエストが 50ms、1% のリクエストが 10秒かかっている。平均レイテンシはおよそいくつか。",
+ c:"約150ms", w:["約50ms","約500ms","約5秒"],
+ e:"0.99 × 0.05 ＋ 0.01 × 10 ＝ 0.0495 ＋ 0.1 ≒ 0.15秒。平均だけ見ると正常に見えるが、100人に1人は10秒待たされている。p99 を見て初めて気づく。",
+ r:"03_observability/red_metrics/red_metrics.py"},
+{id:"03-14",g:2,q:"メトリクスのラベルに `/items/123` のような実際のパスを入れてはいけない理由はどれか。",
+ c:"ID ごとに系列が増えてカーディナリティが爆発し、ストレージとクエリが破綻するから",
+ w:["Prometheus のラベルには数字を含められないから",
+    "実際のパスは個人情報に当たるため、メトリクスに出せないから",
+    "パスごとに系列を分けると、Rate と Errors の合計が一致しなくなるから"],
+ e:"`request.scope[\"route\"].path` でルートのテンプレート（`/items/{item_id}`）を使う。ラベルに可変値を入れないのが原則。",
+ r:"03_observability/red_metrics/red_metrics.py"},
+{id:"03-15",g:2,q:"SLO が「p99 < 500ms」のとき、ヒストグラムのバケット設計で押さえるべきことはどれか。",
+ c:"0.5秒を境界に含める。バケットは後から変えると過去と比較できない",
+ w:["バケットは細かいほど良いので、1ms 刻みで 10秒まで用意する",
+    "SLO の閾値はバケット境界からあえて外し、境界の誤差を避ける",
+    "バケットはあとで自由に変更できるので、最初は既定値のままでよい"],
+ e:"ヒストグラムは「境界以下が何件か」しか持たない。閾値が境界にないと、SLO を満たした割合を正確に出せない。",
+ r:"03_observability/red_metrics/red_metrics.py"},
+{id:"03-16",g:2,q:"ログからの集計でメトリクスを代用したときの問題として、教材が挙げていないものはどれか。",
+ c:"ログでは 5xx の件数を数えることができない",
+ w:["Logs Insights のスキャン量に応じてコストがかかる",
+    "集計に時間がかかり、アラートが遅れる",
+    "ログは数週間で消すが、メトリクスは年単位で持ちたい"],
+ e:"ログでも数えることはできるが、コスト・遅延・保持期間の面でメトリクスに劣る。SLI の母数はメトリクスで持ち、ログは個別調査に使う。",
+ r:"03_observability/red_metrics/red_metrics.py"},
+{id:"03-17",g:2,q:"ログ・メトリクス・トレースの役割分担として正しいものはどれか。",
+ c:"メトリクスは傾向と SLI・アラート、ログは個別の詳細、トレースは遅い区間の特定",
+ w:["メトリクスは個別リクエストの詳細、ログは全体の傾向、トレースは SLI の計算",
+    "メトリクスはどの区間が遅いかの特定、ログはアラート、トレースは全件保持",
+    "3つとも同じ情報を持っており、違いは保存先と保持期間だけである"],
+ e:"苦手なことも対になっている。メトリクスは個別の原因特定、ログは集計と横断の追跡、トレースは全件保持（サンプリング前提）が苦手。",
+ r:"03_observability/tracing_otel/tracing_otel.py"},
+{id:"03-18",g:2,q:"トレースのサンプリングで、教材が「エラーは必ず残す」ために必要としている方式はどれか。",
+ c:"tail-based sampling（処理完了後に結果を見て残すか決める）",
+ w:["head-based sampling（リクエスト開始時に一定割合で決める）",
+    "全件保持（サンプリングしない）",
+    "ランダムサンプリングの割合を 50% に上げる"],
+ e:"開始時に決める方式では、エラーになるかどうかはまだ分からないので、肝心のエラーが捨てられることがある。全件保持はコストが合わない。",
+ r:"03_observability/tracing_otel/tracing_otel.py"},
+{id:"03-19",g:2,q:"ALB の X-Amzn-Trace-Id と OpenTelemetry の traceparent の関係として正しいものはどれか。",
+ c:"別物なので、両方をログに残して突き合わせられるようにする",
+ w:["同じ値なので、どちらか一方をログに残せば十分である",
+    "ALB が traceparent を自動で X-Amzn-Trace-Id に変換するので、意識しなくてよい",
+    "traceparent を使うと、ALB は X-Amzn-Trace-Id を付与しなくなる"],
+ e:"さらにログの JSON に trace_id / span_id を含めると、トレースとログを双方向に行き来でき、調査速度が大きく変わる。",
+ r:"03_observability/tracing_otel/tracing_otel.py"},
+
+/* ---------------- 04 failure ---------------- */
+{id:"04-01",g:3,q:"401 と 403 の使い分けとして正しいものはどれか。",
+ c:"401 は認証なし・期限切れ、403 は認証済みだが権限がない",
+ w:["401 は認証済みだが権限がない、403 は認証なし・期限切れ",
+    "401 はリソースが存在しない、403 はリクエスト形式が不正",
+    "401 はレート制限、403 はメンテナンス中"],
+ e:"401 は「誰か分からない」、403 は「誰かは分かったが許可しない」。",
+ r:"04_failure/status_code_policy/status_code_policy.py"},
+{id:"04-02",g:3,q:"FastAPI で、JSON としては正しいがフィールドの型が合わず Pydantic の検証に失敗した。既定で返るステータスはどれか。",
+ c:"422", w:["400","409","500"],
+ e:"RequestValidationError は 422。exception_handlers.py では、どのフィールドが悪いかを detail に入れて統一形式で返している。",
+ r:"04_failure/exception_handlers/exception_handlers.py"},
+{id:"04-03",g:3,q:"409 を返す状況として最も適切なものはどれか。",
+ c:"同じ冪等キーで異なるボディが届くなど、今の状態と衝突する",
+ w:["リクエストの JSON が構文的に壊れていて解析できない",
+    "パスで指定された ID のリソースがどこにも存在しない",
+    "同じクライアントから短時間に大量のリクエストが送られてきた"],
+ e:"構文不正は 400、存在しないは 404、送りすぎは 429。409 は「今の状態と衝突する」。",
+ r:"04_failure/status_code_policy/status_code_policy.py"},
+{id:"04-04",g:3,q:"429 に Retry-After を付けないと、何が起きやすいか。",
+ c:"クライアントがすぐにリトライし、レート制限中の負荷がかえって増える",
+ w:["ブラウザが 429 を 500 として扱い、エラー画面を出す",
+    "ALB が 429 を 502 に変換してクライアントへ返す",
+    "クライアントが以後そのエンドポイントに二度とリトライしなくなる"],
+ e:"待つべき時間が分からないと、クライアントは即座に再送しがち。retry_backoff.py 側も Retry-After があればそれに従う作りになっている。",
+ r:"04_failure/status_code_policy/status_code_policy.py"},
+{id:"04-05",g:3,q:"自分の API が呼んだ下流 API が 500 を返した。教材の方針で、自分が返すステータスはどれか。",
+ c:"502", w:["500","503","504"],
+ e:"下流が不正な応答を返した＝bad gateway。下流がタイムアウトなら 504、自分の DB に繋がらないなら 503、自分のコードのバグなら 500。",
+ r:"04_failure/status_code_policy/status_code_policy.py"},
+{id:"04-06",g:3,q:"自分の API が使う DB に繋がらない。教材の方針で返すステータスはどれか。",
+ c:"503", w:["500","502","504"],
+ e:"依存が復旧すれば直る種類の失敗は 503。自分は動いているが、今はサービスを提供できない、という表現になる。",
+ r:"04_failure/status_code_policy/status_code_policy.py"},
+{id:"04-07",g:3,q:"下流 API が 404 を返した。教材の方針として正しいものはどれか。",
+ c:"業務的に存在しないなら 404、下流の設定ミスなら 502",
+ w:["下流の応答はそのまま中継し、常に 404 を返す",
+    "下流の失敗は自分の失敗なので、常に 500 を返す",
+    "下流が 4xx を返した場合は、常に 400 を返す"],
+ e:"同じ 404 でも、利用者の指定したものが本当にないのか、こちらの URL 設定が壊れているのかで意味が違う。後者を 404 で返すと、自分の障害が SLI に出ない。",
+ r:"04_failure/status_code_policy/status_code_policy.py"},
+{id:"04-08",g:3,q:"本来 4xx であるべき失敗を 500 で返していると、可用性 SLO はどうなるか。",
+ c:"実態より悪く出る", w:["実態より良く出る","変わらない","計算できなくなる"],
+ e:"可用性 SLI は「5xx 以外 ÷ 全体」なので、利用者起因の失敗が分子から抜けて悪化する。逆に自分の不具合を 400 で返すと、実態より良く出る。どちらも数値から状態が分からなくなる。",
+ r:"04_failure/status_code_policy/status_code_policy.py"},
+{id:"04-09",g:3,q:"可用性 SLI（5xx 以外 ÷ 全体）で、429 の扱いとして教材の考え方に合うものはどれか。",
+ c:"成功に数えるが、大量発生は異常なので発火率を別途監視する",
+ w:["429 は自分の容量不足なので、失敗として分子から除く",
+    "429 は分母からも分子からも除き、SLI の計算対象外にする",
+    "429 は成功に数え、特に監視する必要はない"],
+ e:"4xx はサービスとしては正常に応答しているので成功に数える。ただし 429 の急増は、容量不足や設定ミスのサインになり得る。",
+ r:"04_failure/status_code_policy/status_code_policy.py"},
+{id:"04-10",g:3,q:"未捕捉例外のスタックトレースを、レスポンスに出さずログにだけ残す理由として正しいものはどれか。",
+ c:"内部のパスや構成、接続文字列が攻撃者の地図になる一方、調査には全部必要だから",
+ w:["スタックトレースは JSON にできず、レスポンスに入れると 500 が 502 になるから",
+    "レスポンスに含めるとサイズが大きくなり、ALB のタイムアウトに当たるから",
+    "ログに残すと自動で X-Ray に送られ、トレースと紐付くから"],
+ e:"「外には出さず、内には残す」。レスポンスには汎用メッセージと request_id だけを返し、問い合わせの起点にする。",
+ r:"04_failure/exception_handlers/exception_handlers.py"},
+{id:"04-11",g:3,q:"exception_handlers.py の HTTPException ハンドラが、4xx のログレベルを WARNING にしている意図はどれか。",
+ c:"4xx は意図した失敗なので、アラート対象にしない",
+ w:["4xx は ERROR にするとスタックトレースが出力されてしまうから",
+    "WARNING にすると、レスポンスに detail が含まれなくなるから",
+    "4xx は CloudWatch に送られないようにするため"],
+ e:"5xx は ERROR、4xx は WARNING に分けておくと、ログレベルでアラートを組むときに利用者起因の失敗で鳴らずに済む。",
+ r:"04_failure/exception_handlers/exception_handlers.py"},
+{id:"04-12",g:3,q:"30日窓で SLO 99.95% のとき、許容されるダウンタイムはおよそ何分か。",
+ c:"約21.6分", w:["約4.3分","約43.2分","約216分"],
+ e:"30 × 24 × 60 × 0.0005 = 21.6分。桁感として 99.9% が約43分、99.99% が約4.3分。",
+ r:"04_failure/sli_error_budget/sli_error_budget.py"},
+{id:"04-13",g:3,q:"SLO 99.9%、30日間の総リクエスト 10,000,000 件のうち 5xx が 6,500 件。エラーバジェットの消費率はいくつか。",
+ c:"65%", w:["6.5%","35%","0.065%"],
+ e:"許容失敗数 = 10,000,000 × 0.001 = 10,000。消費率 = 6,500 ÷ 10,000 = 65%。sli_error_budget.py の実行結果と同じ数字になる。",
+ r:"04_failure/sli_error_budget/sli_error_budget.py"},
+{id:"04-14",g:3,q:"sli_error_budget.py の SLI 定義文テンプレートの6項目として正しいものはどれか。",
+ c:"指標名・対象・成功・計測・窓・目標",
+ w:["指標名・担当者・閾値・通知先・窓・目標",
+    "対象・成功・失敗・原因・対策・目標",
+    "指標名・対象・平均・p99・最大・目標"],
+ e:"埋まらない項目があれば、そこが計測できていない箇所。1/13 に担当システムで実際に書く。",
+ r:"04_failure/sli_error_budget/sli_error_budget.py"},
+{id:"04-15",g:3,q:"サーバ（ターゲット）側の 5xx 率だけで可用性 SLI を作ったとき、見えなくなるものはどれか。",
+ c:"ターゲット全滅など LB より手前の失敗",
+ w:["アプリのコードのバグで返した 500 エラー",
+    "下流 API のタイムアウトで返した 504",
+    "処理に10秒以上かかった遅いリクエストの件数"],
+ e:"ALB のメトリクスや合成監視を併用する。なお教材のテンプレートは、成功を elb_status_code で定義しながら計測を HTTPCode_Target_5XX_Count にしている。ALB 自身が返した 5xx も数えるなら HTTPCode_ELB_5XX_Count も必要で、定義と計測をそろえておく。",
+ r:"04_failure/sli_error_budget/sli_error_budget.py"},
+{id:"04-16",g:3,q:"エラーバジェットの使い方として、教材の説明に合うものはどれか。",
+ c:"余ればリリース速度を上げ、尽きれば新機能を止めて信頼性改善に回す",
+ w:["余っていれば SLO を引き上げ、尽きていれば SLO を引き下げる",
+    "余った分は翌月以降に繰り越し、年間の合計で帳尻を合わせる",
+    "尽きたら担当者の評価を下げ、余ったらアラートと監視を減らす"],
+ e:"SLO は守る目標であると同時に使う予算。これがないと「落ちたから怒られる」という属人的な運用のままになる。",
+ r:"04_failure/sli_error_budget/sli_error_budget.py"},
+
+/* ---------------- 05 async pitfalls ---------------- */
+{id:"05-01",g:4,q:"`async def` のエンドポイント内で `time.sleep(3)` を呼ぶと、何が起きるか。",
+ c:"イベントループが3秒止まり、同じワーカーの無関係なリクエストまで待たされる",
+ w:["FastAPI が自動でスレッドへ逃がすので、他のリクエストには影響しない",
+    "そのリクエストだけがタイムアウトし、500 が返る",
+    "time.sleep は async def の中では無視され、即座に応答が返る"],
+ e:"イベントループは1スレッド。await しない処理の間、他のリクエストは一切進まない。requests、同期 DB ドライバ、重い CPU 処理も同じ。",
+ r:"05_async_pitfalls/blocking_event_loop/blocking_event_loop.py"},
+{id:"05-02",g:4,q:"イベントループのブロッキングによる障害の見え方として、教材の説明に合うものはどれか。",
+ c:"エラーも CPU 上昇もなく処理時間だけが伸び、遅い API と原因の API が別物になる",
+ w:["遅いエンドポイントで 500 が多発し、アプリログに例外とスタックトレースが残る",
+    "CPU 使用率が 100% に張り付き、メモリも増え続けてタスクが OOM で再起動される",
+    "ALB が 502 を返し、ヘルスチェックも失敗してターゲットが unhealthy として外される"],
+ e:"見分け方は、遅くなった時刻に同じタスクへ届いた別のリクエストを調べること。重い同期処理が走っていれば、そこが犯人。",
+ r:"05_async_pitfalls/blocking_event_loop/blocking_event_loop.py"},
+{id:"05-03",g:4,q:"次のうち、イベントループを止めてしまう書き方はどれか。",
+ c:"`async def` の中で `requests.get()` を呼ぶ",
+ w:["`async def` の中で `await asyncio.to_thread(time.sleep, 3)` を呼ぶ",
+    "`def` のエンドポイントの中で `time.sleep(3)` を呼ぶ",
+    "`async def` の中で `await client.get()`（httpx.AsyncClient）を呼ぶ"],
+ e:"requests は同期ライブラリ。async def の中で呼ぶと、イベントループを止めるうえスレッドプールにも逃がされない、最悪の組み合わせになる。",
+ r:"05_async_pitfalls/sync_vs_async/sync_vs_async.py"},
+{id:"05-04",g:4,q:"psycopg2 のような同期ライブラリを使うエンドポイントの書き方として、教材の基準に合うものはどれか。",
+ c:"`def` で書き、FastAPI にスレッドプールで実行させる",
+ w:["`async def` で書き、そのまま呼び出す",
+    "`async def` で書き、呼び出しの前に `await asyncio.sleep(0)` を入れる",
+    "どちらで書いても FastAPI が自動で判別するので、違いはない"],
+ e:"非同期ライブラリ（httpx, asyncpg）は async def、同期ライブラリ（requests, psycopg2）は def、CPU 負荷の高い処理は def か別プロセス。",
+ r:"05_async_pitfalls/sync_vs_async/sync_vs_async.py"},
+{id:"05-05",g:4,q:"`def` で書いた重い処理が多く、スレッドプールが枯渇したときの症状はどれか。",
+ c:"後続が待ち行列に入り、エラーは出ずにレイテンシだけが伸びる",
+ w:["新しいスレッドが無制限に作られ、メモリ不足でタスクが落ちる",
+    "スレッドを取れないリクエストに即座に 503 が返る",
+    "FastAPI が自動でイベントループ上に切り替えて実行する"],
+ e:"FastAPI（anyio）のスレッドプールは既定で 40 程度。上限を上げる前に「なぜそんなに同期処理があるのか」を考える。増やすほどメモリと下流への同時接続も増える。",
+ r:"05_async_pitfalls/sync_vs_async/sync_vs_async.py"},
+{id:"05-06",g:4,q:"BackgroundTasks に載せた処理の性質として正しいものはどれか。",
+ c:"レスポンス後に同じプロセスで動き、デプロイ等で失われても再実行されない",
+ w:["別のワーカープロセスで実行され、失敗すると自動でリトライされる",
+    "SQS に自動で投入され、タスクが落ちても別タスクが引き継ぐ",
+    "レスポンス返却前に実行され、完了するまでクライアントは待たされる"],
+ e:"ローリング更新のたびに数件ずつ消えるので障害として気づきにくく、数か月後に「データが合わない」形で表面化する。",
+ r:"05_async_pitfalls/background_task_loss/background_task_loss.py"},
+{id:"05-07",g:4,q:"BackgroundTasks に載せてよい処理はどれか。",
+ c:"キャッシュの温め直し", w:["決済の確定","在庫の引当","外部システムへの連携"],
+ e:"失われても困らない処理（アクセスログの追記、キャッシュの温め直し）は載せてよい。通知メールは △。決済・在庫・外部連携はキューへ逃がす。",
+ r:"05_async_pitfalls/background_task_loss/background_task_loss.py"},
+{id:"05-08",g:4,q:"失われては困る処理を確実に実行するため、教材が示す transactional outbox の流れとして正しいものはどれか。",
+ c:"同じトランザクションで outbox テーブルに書く → 別プロセスが SQS へ送る → ワーカーが冪等に処理する",
+ w:["BackgroundTasks で SQS へ送る → 失敗したらログに出す → 運用者が手動で再実行する",
+    "SQS へ送る → 成功したら DB に書く → 失敗したら BackgroundTasks で再送する",
+    "DB に書く → レスポンスを返す → 同じリクエストの BackgroundTasks で外部 API を呼ぶ"],
+ e:"DB の更新とメッセージ送信を同じトランザクションにできないので、まず DB に「送るべきもの」として書き、送信は別プロセスに任せる。送信は重複し得るので、受け側は冪等にする。",
+ r:"05_async_pitfalls/background_task_loss/background_task_loss.py"},
+{id:"05-09",g:4,q:"pool_sizing.py の条件で、タスク数の上限はいくつか。\nワーカー1、1ワーカーあたりの DB プール10、DB の max_connections 200、管理用の予約 10",
+ c:"19", w:["20","18","30"],
+ e:"利用可能 = 200 − 10 = 190。1タスクあたり 1 × 10 = 10。190 ÷ 10 = 19。タスクを30に増やすと使用見込み300で超過する。プールを5に絞れば38まで立てられる。",
+ r:"05_async_pitfalls/pool_sizing/pool_sizing.py"},
+{id:"05-10",g:4,q:"負荷が高いので ECS タスク数を増やしたところ、全体のエラー率がかえって上がった。pool_sizing の観点で最初に疑うものはどれか。",
+ c:"総接続数が DB の max_connections を超え、接続を取れないタスクが出た",
+ w:["タスクを増やしたことで ALB のアイドルタイムアウトが自動で短くなり、接続が切れた",
+    "タスクが増えるとイベントループがタスク間で共有され、1つのブロッキングが全体に波及した",
+    "タスクを増やすと httpx の max_connections が自動で減らされた"],
+ e:"接続数はスケールアウトの天井になる。RDS の max_connections は SHOW max_connections で実値を確認する。RDS Proxy を挟むとアプリ側と DB 側の接続数を分離できる。",
+ r:"05_async_pitfalls/pool_sizing/pool_sizing.py"},
+
+/* ---------------- 06 runtime ---------------- */
+{id:"06-01",g:5,q:"Dockerfile で `CMD uvicorn main:app --host 0.0.0.0` と書いたとき、graceful shutdown が動かない理由はどれか。",
+ c:"シェル形式なので sh が PID 1 になり、SIGTERM が uvicorn に転送されないから",
+ w:["シェル形式だと uvicorn がバックグラウンドで起動し、ポートを開けないから",
+    "シェル形式では環境変数が読めず、--timeout-graceful-shutdown が無効になるから",
+    "シェル形式だと SIGTERM ではなく SIGINT が送られるから"],
+ e:"SIGTERM が届かないので、stopTimeout の秒数だけ待たされたあと SIGKILL で強制終了される。01 のシャットダウン処理が動いていないときは、まずここを疑う。",
+ r:"06_runtime/signal_handling/signal_handling.py"},
+{id:"06-02",g:5,q:"SIGTERM が uvicorn に直接届く書き方はどれか。",
+ c:"`CMD [\"uvicorn\", \"main:app\", \"--host\", \"0.0.0.0\"]`",
+ w:["`CMD uvicorn main:app --host 0.0.0.0`",
+    "`CMD [\"sh\", \"-c\", \"uvicorn main:app --host 0.0.0.0\"]`",
+    "`CMD [\"/bin/bash\", \"-lc\", \"uvicorn main:app\"]`"],
+ e:"exec 形式（JSON 配列）なら uvicorn が PID 1 になる。配列でも中身が sh -c ならシェルが PID 1 になるので同じ問題が起きる。",
+ r:"06_runtime/signal_handling/signal_handling.py"},
+{id:"06-03",g:5,q:"起動スクリプトの都合でどうしてもシェルを挟む必要がある。PID 1 問題への対処として教材が示すものはどれか。",
+ c:"tini や dumb-init を ENTRYPOINT に置く",
+ w:["stopTimeout を最大値の120秒にする",
+    "Dockerfile に HEALTHCHECK を追加する",
+    "uvicorn の --workers を2以上にする"],
+ e:"tini などの小さな init がシグナルを子プロセスへ転送し、ゾンビプロセスも回収する。",
+ r:"06_runtime/signal_handling/signal_handling.py"},
+{id:"06-04",g:5,q:"コンテナ内で PID 1 が何かを確認するコマンドとして、06 の確認手順にあるものはどれか。",
+ c:"`docker compose exec app ps -eo pid,comm`",
+ w:["`docker compose logs app | head -1`",
+    "`docker inspect app --format '{{.State.Pid}}'`",
+    "`docker compose top`"],
+ e:"PID 1 が uvicorn なら OK、sh なら NG。続けて `docker compose stop` で graceful shutdown のログが出ることを確認する。",
+ r:"06_runtime/README.md"},
+{id:"06-05",g:5,q:"ベースイメージを `python:3.12-slim` ではなく `python:3.12-slim@sha256:...` で指定する理由はどれか。",
+ c:"タグは付け替えられるが、ダイジェストは内容のハッシュで不変だから",
+ w:["ダイジェスト指定のほうが pull が速く、起動時間が短くなるから",
+    "タグ指定だと非 root ユーザを作れないから",
+    "ダイジェスト指定にすると、脆弱性スキャンが不要になるから"],
+ e:"同じタグでも中身が変わり得るので、再ビルドやロールバックで別物が入る。12月 12/17 の「タグは付け替えられる」と同じ論点。",
+ r:"06_runtime/docker/Dockerfile"},
+{id:"06-06",g:5,q:"イメージサイズが障害対応に効く理由として最も適切なものはどれか。",
+ c:"pull 時間が、起動・スケールアウト・ロールバックの速さに直結するから",
+ w:["イメージが大きいと、コンテナのメモリ上限が自動で引き上げられるから",
+    "イメージが大きいと、CloudWatch Logs への出力が遅れるから",
+    "イメージが小さいと、ALB のヘルスチェック間隔を短くできるから"],
+ e:"新しいタスクは毎回イメージを取得する。障害時に「前のバージョンに戻す」速さも、ここで決まる。",
+ r:"06_runtime/README.md"},
+{id:"06-07",g:5,q:"Dockerfile をマルチステージ構成にしている目的はどれか。",
+ c:"wheel のビルドに使ったツール類を、最終イメージに残さないため",
+ w:["ビルドステージと実行ステージで、別の Python バージョンを使うため",
+    "実行ステージを root で動かし、ビルドステージだけを非 root にするため",
+    "ECS がステージごとに別のタスクとして起動できるようにするため"],
+ e:"ビルドステージで wheel を作り、実行ステージには wheel だけを運んでインストールする。イメージが小さくなり、攻撃面も減る。",
+ r:"06_runtime/docker/Dockerfile"},
+{id:"06-08",g:5,q:"CPU 割当を超える数の uvicorn ワーカーを1コンテナに立てたとき、起きることとして教材の説明に合うものはどれか。",
+ c:"CPU スロットリングでかえって遅くなり、DB 接続数も掛け算で増える",
+ w:["ワーカー数に比例して処理能力が上がるので、そのぶんタスク数を減らせる",
+    "ECS が自動でタスクの CPU 割当を増やすので、性能は変わらない",
+    "余ったワーカーは起動せず待機するので、影響はない"],
+ e:"ECS/Fargate では「1コンテナ1プロセス」でタスク数を増やすのが素直。落ちた単位も明確になる。",
+ r:"06_runtime/README.md"},
+{id:"06-09",g:5,q:"docker-compose.yml の `stop_grace_period: 90s` に相当する ECS の設定はどれか。",
+ c:"コンテナ定義の stopTimeout",
+ w:["サービスの healthCheckGracePeriodSeconds",
+    "ターゲットグループの deregistration_delay",
+    "タスク定義の healthCheck.startPeriod"],
+ e:"どちらも SIGTERM から SIGKILL までの猶予。healthCheckGracePeriodSeconds は起動直後のヘルスチェック失敗を無視する期間で、別物。",
+ r:"06_runtime/docker/docker-compose.yml"},
+{id:"06-10",g:5,q:"コンテナを非 root ユーザで動かす主な理由はどれか。",
+ c:"侵害されたときに、コンテナ内やホストで取れる権限を小さくするため",
+ w:["root で動かすと 1024 番以上のポートを開けないため",
+    "非 root のほうが Python の実行速度が速いため",
+    "非 root にしないと SIGTERM を受け取れないため"],
+ e:"Dockerfile では `useradd` で UID 10001 のユーザを作り、`COPY --chown` と `USER appuser` で切り替えている。",
+ r:"06_runtime/docker/Dockerfile"},
+
+/* ---------------- 07 integrated ---------------- */
+{id:"07-01",g:6,q:"07 の main.py で `observability.install(app)` を最後に呼んでいる理由はどれか。",
+ c:"後から追加したミドルウェアが外側になり、リクエスト ID を最も外側で採番したいから",
+ w:["先に追加したミドルウェアが外側になり、最後に呼ぶと最も内側になるから",
+    "/metrics のルートは、他のルートより後に登録しないと 404 になるから",
+    "例外ハンドラより前に呼ぶと、ログが二重に出力されるから"],
+ e:"外側で採番すれば、内側のミドルウェアやハンドラのログすべてに request_id が入る。順序を逆にすると、アクセスログに request_id が入らない。",
+ r:"07_integrated/app/main.py"},
+{id:"07-02",g:6,q:"07 の observability.py が request_id を ContextVar だけでなく `request.state` にも入れている理由はどれか。",
+ c:"未捕捉例外を扱う ServerErrorMiddleware は外側にあり、ContextVar が reset 済みだから",
+ w:["ContextVar は def で書いたエンドポイントからは読めず、スレッド側で値が空になるため",
+    "request.state に入れないと、レスポンスヘッダに x-request-id を付けられず採番し直しになるため",
+    "ContextVar はワーカープロセス間で共有され、別リクエストの値で上書きされるため"],
+ e:"errors.py の `_rid` は ContextVar を優先し、`-`（reset 済み）なら request.state から拾う。これでエラーレスポンスにも request_id が入る。",
+ r:"07_integrated/app/observability.py / errors.py"},
+{id:"07-03",g:6,q:"`JSONResponse(503, {\"status\": \"draining\"})` と書くと、何が起きるか。",
+ c:"第1引数は content なので、status_code に dict が入り TypeError",
+ w:["位置引数でも値の型から判別されるので、503 と JSON 本文が正しく返る",
+    "status_code が既定の 200 のままになり、本文が文字列の \"503\" になる",
+    "型を見て FastAPI が引数の順序を自動で入れ替え、503 と本文を正しく返す"],
+ e:"必ず `JSONResponse(content=..., status_code=...)` とキーワードで指定する。",
+ r:"README.md 技術メモ"},
+{id:"07-04",g:6,q:"07 を ALB 経由で動かし、クライアントが `x-request-id: mytest` を付けて送った。レスポンスの x-request-id に返る値はどれか。",
+ c:"ALB が付けた X-Amzn-Trace-Id の Root 値",
+ w:["クライアントが送った mytest", "アプリが uuid4 で新しく採番した値", "空（ALB が x-request-id を削除するため付かない）"],
+ e:"_request_id は X-Amzn-Trace-Id を最優先する。ローカルで `curl -H 'x-request-id: mytest'` を試すと mytest が返るのは、ALB がいないから。本番で「伝えた ID で探せない」と戸惑わないよう、この差を覚えておく。",
+ r:"07_integrated/app/observability.py"},
+{id:"07-05",g:6,q:"07 で `curl -i localhost:8000/boom` を叩いたときの結果として、README の期待に合うものはどれか。",
+ c:"500。本文は INTERNAL_ERROR と request_id のみで、ログにはトレースが残る",
+ w:["500。本文に ValueError のメッセージとスタックトレースが含まれ、ログには残らない",
+    "200。本文の error にエラー内容が入り、ログには access の1行だけが残る",
+    "502。uvicorn がワーカープロセスを再起動し、処理中のリクエストが切れる"],
+ e:"`this detail must not leak to the response` という例外メッセージが本文に出ていないことを確認する。ログ側には exc_info=True でトレースが出る。",
+ r:"07_integrated/README.md"},
+{id:"07-06",g:6,q:"07 の `/downstream/{post_id}` で、下流 API が 404 を返した。クライアントに返るステータスはどれか。",
+ c:"500", w:["404","502","503"],
+ e:"404 はリトライ対象外なので get_with_retry は httpx.HTTPStatusError をそのまま送出する。これは HTTPException ではないので未捕捉例外ハンドラに落ち、500 になる。04 の方針なら 404 か 502 にすべきところで、統合アプリに残っている改善点。書き直すなら HTTPStatusError を捕まえて方針どおりに変換する。",
+ r:"07_integrated/app/main.py / http_client.py"},
+{id:"07-07",g:6,q:"07 の README の期待では、`/slow?seconds=15` 実行中に SIGTERM を送ると「/slow が完走し、その後に shutdown 1/4〜4/4 が順に出る」。この順序から分かることはどれか。",
+ c:"uvicorn は受付を止めて処理中の接続を待ち終えてから、lifespan の終了処理を実行する",
+ w:["lifespan の ①〜② の間も、uvicorn は新規リクエストを受け付けている",
+    "SIGTERM を受けると、まず lifespan の終了処理が走り、その中で /slow を待っている",
+    "/slow は別スレッドで実行されているため、lifespan とは無関係に完走する"],
+ e:"uvicorn は SIGTERM を受けると、先に待ち受けを閉じて処理中の接続を --timeout-graceful-shutdown まで待ち、そのあと lifespan の終了処理を呼ぶ。つまり ① で readiness を 503 にする時点では、すでに新規接続を受け付けていない。ECS＋ALB では、サービスのタスク停止時にターゲットの登録解除を済ませてから SIGTERM を送るので実害は出にくいが、「readiness を落として LB に外させる」をアプリ内で完結させたいなら、SIGTERM を先に捕まえる仕組みが別に要る。1/5 の実験で、② の待機中に `curl /readyz` が 503 を返すのか、接続拒否になるのかを確かめるとよい。",
+ r:"07_integrated/app/lifecycle.py"},
+{id:"07-08",g:6,q:"07 のコンテナ化で、次の値の関係が成り立っているか検算する。最悪時の SIGTERM から終了までの時間と、stop_grace_period の比較として正しいものはどれか。\nuvicorn --timeout-graceful-shutdown 60秒、DRAIN_WAIT_SECONDS 20秒、INFLIGHT_WAIT_SECONDS 30秒、stop_grace_period 90秒",
+ c:"処理中接続の待ち最大60秒 ＋ ドレイン待機20秒 ＝ 最大約80秒 ＜ 90秒で、猶予内に収まる",
+ w:["ドレイン待機20秒 ＋ 処理中待機30秒 ＋ uvicorn 60秒 ＝ 110秒 ＞ 90秒で、SIGKILL される",
+    "uvicorn 60秒 ＞ stop_grace_period 90秒 ÷ 2 なので、SIGKILL される",
+    "ドレイン待機20秒 ＜ 処理中待機30秒なので、処理中のリクエストが切れる"],
+ e:"uvicorn が先に処理中の接続を待ち終えるので、lifespan の ③ に入る時点で処理中は0になり、③ の30秒はほぼ使われない。最悪は「接続待ち60秒＋ドレイン20秒」。ただし lifespan の中身が変われば前提も変わるので、実際に `docker compose stop` の時刻とログで確かめる。",
+ r:"07_integrated/README.md 5日目の課題5"},
+];
+
+/* =====================================================================
+   保存（Claude の保存領域があれば使い、なければブラウザのローカル領域）
+   ===================================================================== */
+const KEY = "sre-fastapi-quiz-v1";
+const Store = {
+  async load(){
+    if (window.storage && typeof window.storage.get === "function") {
+      try { const r = await window.storage.get(KEY, false); return r ? JSON.parse(r.value) : null; }
+      catch(e){ return null; }
+    }
+    try { const v = window.localStorage.getItem(KEY); return v ? JSON.parse(v) : null; } catch(e){ return null; }
+  },
+  async save(d){
+    const s = JSON.stringify(d);
+    if (window.storage && typeof window.storage.set === "function") {
+      try { await window.storage.set(KEY, s, false); return true; } catch(e){ return false; }
+    }
+    try { window.localStorage.setItem(KEY, s); return true; } catch(e){ return false; }
+  }
+};
+
+/* =====================================================================
+   状態
+   ===================================================================== */
+let DATA = {version:1, records:{}};
+const rec = id => DATA.records[id] || (DATA.records[id] = {s:0, n:0, c:0, w:0, t:0});
+const rankOf = id => (DATA.records[id] ? DATA.records[id].s : 0);
+
+let view = "setup";
+let setup = {genres: GENRES.map(()=>true), pattern:"nocombo"};
+let session = null;
+
+const $app = document.getElementById("app");
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+const fmt = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+const shuffle = a => { a = a.slice(); for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove("show"), 1800);
+}
+
+function genreCounts(g){
+  const qs = Q.filter(q=>q.g===g);
+  const c = [0,0,0,0];
+  qs.forEach(q=>c[rankOf(q.id)]++);
+  return {total: qs.length, c};
+}
+function distBar(c, total){
+  const cols = ["var(--r0)","var(--r1)","var(--r2)","var(--r3)"];
+  return `<div class="dist" aria-hidden="true">${c.map((n,i)=> n?`<span style="width:${n/total*100}%;background:${cols[i]}"></span>`:"").join("")}</div>`;
+}
+
+/* =====================================================================
+   画面：出題設定
+   ===================================================================== */
+function renderSetup(){
+  const items = GENRES.map((g,i)=>{
+    const {total,c} = genreCounts(i);
+    return `<li>
+      <input type="checkbox" id="g${i}" ${setup.genres[i]?"checked":""} data-g="${i}">
+      <label for="g${i}" class="gname"><span class="num">${g.no}</span>${esc(g.name)}</label>
+      ${distBar(c,total)}
+      <div class="gmeta">${total}問　コンボ ${c[3]}　残り ${total-c[3]}</div>
+    </li>`;
+  }).join("");
+  const sel = Q.filter(q=>setup.genres[q.g]);
+  const n = setup.pattern==="all" ? sel.length : sel.filter(q=>rankOf(q.id)<3).length;
+  $app.innerHTML = `
+  <section class="panel">
+    <h2>ジャンル</h2>
+    <div class="row"><button class="btn small" id="allOn">すべて選ぶ</button><button class="btn small" id="allOff">すべて外す</button></div>
+    <ul class="genres section">${items}</ul>
+    <div class="legend">${RANKS.map((r,i)=>`<span><i style="background:var(--r${i})"></i>${r}</span>`).join("")}</div>
+  </section>
+  <section class="panel section">
+    <h2>出題パターン</h2>
+    <div class="seg" role="radiogroup" aria-label="出題パターン">
+      <label><input type="radio" name="pat" value="nocombo" ${setup.pattern==="nocombo"?"checked":""}>コンボを除く</label>
+      <label><input type="radio" name="pat" value="all" ${setup.pattern==="all"?"checked":""}>全て</label>
+    </div>
+    <p class="muted">正解が3回続くとコンボ。1回でも間違えるとミスに戻ります。選択肢の並びは毎回入れ替わります。</p>
+    <div class="row section">
+      <button class="btn primary" id="start" ${n?"":"disabled"}>${n}問を解く</button>
+      ${n===0 && sel.length ? `<span class="muted">選んだジャンルはすべてコンボです</span>` : ""}
+    </div>
+  </section>`;
+  $app.querySelectorAll("input[type=checkbox]").forEach(el=>el.onchange=()=>{ setup.genres[+el.dataset.g]=el.checked; renderSetup(); });
+  $app.querySelectorAll("input[name=pat]").forEach(el=>el.onchange=()=>{ setup.pattern=el.value; renderSetup(); });
+  document.getElementById("allOn").onclick = ()=>{ setup.genres=setup.genres.map(()=>true); renderSetup(); };
+  document.getElementById("allOff").onclick = ()=>{ setup.genres=setup.genres.map(()=>false); renderSetup(); };
+  document.getElementById("start").onclick = startSession;
+}
+
+function startSession(){
+  let qs = Q.filter(q=>setup.genres[q.g]);
+  if (setup.pattern==="nocombo") qs = qs.filter(q=>rankOf(q.id)<3);
+  if (!qs.length) return;
+  session = {queue: shuffle(qs), i:0, correct:0, missed:[], answered:false, order:null, picked:null};
+  view = "quiz"; render();
+}
+
+/* =====================================================================
+   画面：出題
+   ===================================================================== */
+function meter(s){
+  const cols = ["var(--r0)","var(--r1)","var(--r2)","var(--r3)"];
+  return `<span class="meter" style="color:${cols[s]}"><span class="bars">${[1,2,3].map(k=>`<b style="${k<=s?`background:${cols[s]}`:""}"></b>`).join("")}</span>${RANKS[s]}</span>`;
+}
+
+function renderQuiz(){
+  const q = session.queue[session.i];
+  if (!session.order) session.order = shuffle([0,1,2,3]);
+  const opts = [q.c, ...q.w];
+  const g = GENRES[q.g];
+  const total = session.queue.length;
+  const r = rankOf(q.id);
+  const optHtml = session.order.map((oi,pos)=>{
+    let cls = "opt";
+    if (session.answered){
+      if (oi===0) cls += " correct";
+      else if (pos===session.picked) cls += " wrong";
+    }
+    return `<li><button class="${cls}" data-pos="${pos}" ${session.answered?"disabled":""}><span class="k">${pos+1}</span><span>${fmt(opts[oi])}</span></button></li>`;
+  }).join("");
+
+  let fb = "";
+  if (session.answered){
+    const ok = session.order[session.picked]===0;
+    const before = session.before, after = rankOf(q.id);
+    fb = `<div class="feedback ${ok?"":"ng"}">
+      <p class="verdict">${ok?"正解":"不正解"}</p>
+      <p class="rankmove">${RANKS[before]} から ${RANKS[after]} へ</p>
+      <p class="expl">${fmt(q.e)}</p>
+      <p class="ref">参照：<code>${esc(q.r)}</code></p>
+    </div>`;
+  }
+
+  $app.innerHTML = `
+  <section class="panel">
+    <div class="qhead"><span>${session.i+1} / ${total}　${g.no} ${esc(g.name)}</span>${meter(session.answered?rankOf(q.id):r)}</div>
+    <div class="progress"><div style="width:${(session.i+(session.answered?1:0))/total*100}%"></div></div>
+    <p class="qtext">${fmt(q.q)}</p>
+    <ul class="opts">${optHtml}</ul>
+    ${fb}
+    <div class="actions">
+      <button class="btn small" id="quit">中断して設定へ戻る</button>
+      ${session.answered?`<button class="btn primary" id="next">${session.i+1<total?"次の問題":"結果を見る"}</button>`:""}
+    </div>
+  </section>`;
+  $app.querySelectorAll(".opt").forEach(b=>b.onclick=()=>answer(+b.dataset.pos));
+  document.getElementById("quit").onclick = ()=>{ session=null; view="setup"; render(); };
+  const nx = document.getElementById("next");
+  if (nx){ nx.onclick = next; nx.focus(); }
+}
+
+async function answer(pos){
+  if (session.answered) return;
+  const q = session.queue[session.i];
+  const r = rec(q.id);
+  session.before = r.s;
+  const ok = session.order[pos]===0;
+  r.n++; r.t = Date.now();
+  if (ok){ r.c++; r.s = Math.min(3, r.s+1); session.correct++; }
+  else { r.w++; r.s = 0; session.missed.push(q); }
+  session.answered = true; session.picked = pos;
+  renderQuiz();
+  const saved = await Store.save(DATA);
+  if (!saved) toast("記録を保存できませんでした。学習成績から JSON を書き出してください");
+}
+
+function next(){
+  session.i++; session.answered=false; session.order=null; session.picked=null;
+  if (session.i >= session.queue.length){ view="result"; }
+  render();
+}
+
+/* =====================================================================
+   画面：結果
+   ===================================================================== */
+function renderResult(){
+  const total = session.queue.length;
+  const sel = Q.filter(q=>setup.genres[q.g]);
+  const remain = sel.filter(q=>rankOf(q.id)<3).length;
+  const complete = remain===0;
+  $app.innerHTML = `
+  <section class="panel">
+    ${complete?`<div class="complete"><p class="big">コンプリート</p><p>選んだジャンル ${sel.length}問がすべてコンボになりました。</p></div>`:""}
+    <h2>今回の結果</h2>
+    <p class="score">${session.correct} / ${total}</p>
+    <p class="muted">選んだジャンルでコンボ以外の問題：残り ${remain}問</p>
+    ${session.missed.length?`<h2 class="section">落とした問題</h2><ol class="missed">${session.missed.map(q=>`<li><code>${q.id}</code> ${fmt(q.q.split("\n")[0])}</li>`).join("")}</ol>`:""}
+    <div class="actions">
+      <button class="btn" id="back">設定へ戻る</button>
+      ${remain?`<button class="btn primary" id="again">残り ${remain}問を解く（コンボを除く）</button>`:""}
+    </div>
+  </section>`;
+  document.getElementById("back").onclick = ()=>{ session=null; view="setup"; render(); };
+  const ag = document.getElementById("again");
+  if (ag) ag.onclick = ()=>{ setup.pattern="nocombo"; startSession(); };
+}
+
+/* =====================================================================
+   画面：学習成績
+   ===================================================================== */
+function renderStats(){
+  let T = {total:0,c:[0,0,0,0],w:0,n:0,ok:0};
+  const rows = GENRES.map((g,i)=>{
+    const qs = Q.filter(q=>q.g===i);
+    const c=[0,0,0,0]; let w=0,n=0,ok=0;
+    qs.forEach(q=>{ const r=DATA.records[q.id]; c[r?r.s:0]++; if(r){w+=r.w;n+=r.n;ok+=r.c;} });
+    T.total+=qs.length; c.forEach((v,k)=>T.c[k]+=v); T.w+=w; T.n+=n; T.ok+=ok;
+    return `<tr><td>${g.no} ${esc(g.name)}</td><td>${qs.length}</td><td>${c[0]}</td><td>${c[1]}</td><td>${c[2]}</td><td>${c[3]}</td><td>${w}</td><td>${n?Math.round(ok/n*100)+"%":"-"}</td></tr>`;
+  }).join("");
+  $app.innerHTML = `
+  <section class="panel">
+    <h2>ジャンル別</h2>
+    <div class="tscroll"><table>
+      <thead><tr><th>ジャンル</th><th>問題</th><th>ミス</th><th>ジャブ</th><th>ヒット</th><th>コンボ</th><th>累計誤答</th><th>正答率</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td>合計</td><td>${T.total}</td><td>${T.c[0]}</td><td>${T.c[1]}</td><td>${T.c[2]}</td><td>${T.c[3]}</td><td>${T.w}</td><td>${T.n?Math.round(T.ok/T.n*100)+"%":"-"}</td></tr></tfoot>
+    </table></div>
+    <p class="muted">累計回答 ${T.n}回。ミスには未回答の問題も含みます。</p>
+  </section>
+  <section class="panel section">
+    <h2>履歴の書き出しと読み込み</h2>
+    <p class="muted">履歴はこのブラウザにしか残りません。区切りごとに書き出して保管してください。</p>
+    <div class="row">
+      <button class="btn primary" id="exp">JSON を書き出す</button>
+      <label class="btn" for="imp" style="display:inline-block">JSON を読み込む</label>
+      <input type="file" id="imp" accept="application/json,.json" class="hidden">
+      <button class="btn" id="reset">履歴を消去する</button>
+    </div>
+    <div id="expArea" class="section hidden">
+      <p class="muted">ダウンロードが始まらない場合は、下の内容をコピーして保存してください。</p>
+      <textarea id="expText" readonly></textarea>
+    </div>
+  </section>`;
+  document.getElementById("exp").onclick = exportJson;
+  document.getElementById("imp").onchange = importJson;
+  document.getElementById("reset").onclick = async ()=>{
+    if (!confirm("すべての回答履歴を消去します。書き出していない履歴は戻せません。消去しますか？")) return;
+    DATA = {version:1, records:{}}; await Store.save(DATA); toast("履歴を消去しました"); renderStats();
+  };
+}
+
+function exportJson(){
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
+  const payload = JSON.stringify({app:"sre-fastapi-quiz", exported_at:d.toISOString(), ...DATA}, null, 2);
+  const area = document.getElementById("expArea"), ta = document.getElementById("expText");
+  ta.value = payload; area.classList.remove("hidden");
+  try{
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([payload],{type:"application/json"}));
+    a.download = `fastapi-quiz-${stamp}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    toast("JSON を書き出しました");
+  }catch(e){ toast("下の内容をコピーして保存してください"); }
+}
+
+function importJson(ev){
+  const f = ev.target.files && ev.target.files[0];
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = async ()=>{
+    try{
+      const d = JSON.parse(rd.result);
+      if (!d || typeof d.records!=="object") throw new Error("records がありません");
+      const ids = new Set(Q.map(q=>q.id)); const records = {};
+      for (const [k,v] of Object.entries(d.records)){
+        if (!ids.has(k) || typeof v!=="object") continue;
+        records[k] = {s:Math.max(0,Math.min(3,+v.s||0)), n:+v.n||0, c:+v.c||0, w:+v.w||0, t:+v.t||0};
+      }
+      if (!confirm(`${Object.keys(records).length}問ぶんの履歴で、現在の履歴を置き換えます。よろしいですか？`)) return;
+      DATA = {version:1, records}; await Store.save(DATA); toast("履歴を読み込みました"); renderStats();
+    }catch(e){ toast("読み込めませんでした。この演習で書き出した JSON を選んでください"); }
+  };
+  rd.readAsText(f);
+}
+
+/* =====================================================================
+   切り替えとキー操作
+   ===================================================================== */
+function render(){
+  const inStats = view==="stats";
+  document.getElementById("navQuiz").setAttribute("aria-current", inStats?"false":"page");
+  document.getElementById("navStats").setAttribute("aria-current", inStats?"page":"false");
+  if (view==="setup") renderSetup();
+  else if (view==="quiz") renderQuiz();
+  else if (view==="result") renderResult();
+  else renderStats();
+}
+document.getElementById("navQuiz").onclick = ()=>{ view = session ? (session.i>=session.queue.length?"result":"quiz") : "setup"; render(); };
+document.getElementById("navStats").onclick = ()=>{ view="stats"; render(); };
+document.addEventListener("keydown", e=>{
+  if (view!=="quiz" || !session || e.target.tagName==="TEXTAREA") return;
+  if (!session.answered && ["1","2","3","4"].includes(e.key)) { answer(+e.key-1); }
+  else if (session.answered && e.key==="Enter" && document.activeElement?.id!=="next") { e.preventDefault(); next(); }
+});
+
+(async ()=>{
+  const d = await Store.load();
+  if (d && d.records) DATA = {version:1, records:d.records};
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+# 演習用サンドボックス。リポジトリのルートに sandbox/ を置いた前提。
+# 起動: docker compose -f sandbox/docker-compose.yml up --build
+#
+# app  : 07_integrated の統合アプリ
+# downstream : 遅い・落ちる・429 を返す下流ダミー（jsonplaceholder では作れない状況を作る）
+# lb   : ALB の代役（XFF の連結、アイドルタイムアウト、アクセスログ）
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: sandbox/Dockerfile.dev
+    working_dir: /workspace/07_integrated
+    volumes:
+      - ..:/workspace
+    ports:
+      - "8000:8000"
+    # ECS の stopTimeout 相当。アプリの 20s + 30s = 50s より長いこと（01-07 の検算）
+    stop_grace_period: 90s
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/readyz"]
+      interval: 10s
+      timeout: 3s
+      retries: 2
+      start_period: 5s
+    depends_on:
+      - downstream
+
+  downstream:
+    build:
+      context: ..
+      dockerfile: sandbox/Dockerfile.dev
+    working_dir: /workspace/sandbox
+    volumes:
+      - ..:/workspace
+    command: ["uvicorn", "downstream.app:app", "--host", "0.0.0.0", "--port", "9001"]
+    ports:
+      - "9001:9001"
+
+  lb:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "8080:80"
+    depends_on:
+      - app

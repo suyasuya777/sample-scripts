@@ -1,0 +1,31 @@
+# terraform.tfvars にリネームして使う
+# 環境タイムラインに合わせて、該当日に true へ書き換えて apply する
+
+region             = "ap-northeast-1"
+name_prefix        = "boto3-study"
+notification_email = "あなたのメールアドレス"   # 必須。SNS購読とSES検証に使う
+my_ip_cidr         = "203.0.113.10/32"           # 2/2 の条件付きDenyの題材
+
+# ------------------------------------------------------
+# セットの有効化（環境タイムライン）
+# ------------------------------------------------------
+# 1/18(月)  セットA（フラグなし。apply した時点で作られる）
+# 1/19(火)  enable_set_b  = true
+# 2/7 (日)  enable_set_c  = true
+# 2/14(日)  enable_set_d  = true
+# 2/21(日)  enable_set_e1 = true
+# 2/23(火)  enable_set_e2 = true  → 演習後、同じ日に false に戻して apply
+# 2/28(日)  terraform destroy
+
+enable_set_b  = false
+enable_set_c  = false
+enable_set_d  = false
+enable_set_e1 = false
+enable_set_e2 = false
+
+# ------------------------------------------------------
+# 調整用
+# ------------------------------------------------------
+ecs_desired_count = 2
+s3_object_count   = 1200
+# db_password     = "StudyOnly12345!"   # state に平文で入る。学習用アカウント限定

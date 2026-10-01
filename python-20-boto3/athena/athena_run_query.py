@@ -4,10 +4,35 @@ athena_run_query.py ― Athena クエリ実行と結果取得（ポーリング�
 ALB / VPC Flow Logs / CloudTrail のログ分析で、SELECT クエリを実行し
 完了までポーリングして結果を取得する実用パターン。
 CloudWatch Logs Insights の start_query / get_query_results と同じ考え方。
+
+--------------------------------------------------------------------
+実行前に下の「設定」を terraform output の値に置き換えること:
+
+  terraform output -raw athena_results_location    -> OUTPUT_LOCATION
+
+ワークグループ primary は結果出力先が未設定なので、OUTPUT_LOCATION を
+渡さないと InvalidRequestException: No output location provided. になる。
+--------------------------------------------------------------------
 """
 import time
 import boto3
 from botocore.exceptions import ClientError
+
+# ====================== 設定 ======================
+REGION = "ap-northeast-1"
+DATABASE = "boto3_study"          # athena_create_projection_table.py で作ったもの
+TABLE = "alb_logs"
+WORKGROUP = "primary"
+
+# terraform output -raw athena_results_location
+OUTPUT_LOCATION = "s3://REPLACE-ME-athena/query-results/"
+
+# 調べたい日（Partition Projection のキー。yyyy/MM/dd）
+# ALB アクセスログはリクエストがあった日にしか作られない。この環境で
+# トラフィックを流すのは 2/1・2/11・2/14・2/23 の4日だけで、2/28 当日の
+# ログは存在しない。既定は 2/14（意図的に 503 を出した日）。
+DAY = "2027/02/14"
+# ==================================================
 
 # 完了とみなさない（＝まだ実行中の）ステートの集合
 _RUNNING_STATES = {"QUEUED", "RUNNING"}
@@ -104,20 +129,33 @@ def run_query(
 
 
 def main() -> None:
-    # 例: ALB アクセスログから直近の 5xx を抽出する
-    sql = """
-        SELECT time, elb_status_code, target_status_code, request_url
-        FROM alb_logs
-        WHERE day = '2026/07/18'
-          AND elb_status_code >= 500
+    if "REPLACE-ME" in OUTPUT_LOCATION:
+        print("[ERROR] OUTPUT_LOCATION を terraform output の値に置き換えてください")
+        print("        terraform output -raw athena_results_location")
+        return
+
+    # ALB が返した 5xx と、ALB とターゲットでステータスが食い違う行を抽出する。
+    # target_status_code は文字列（'-' が入りうる）なので、比較の前に除外する。
+    sql = f"""
+        SELECT time,
+               elb_status_code,
+               target_status_code,
+               request_url,
+               target_processing_time
+        FROM {TABLE}
+        WHERE day = '{DAY}'
+          AND (elb_status_code >= 500
+               OR (target_status_code <> '-'
+                   AND CAST(elb_status_code AS varchar) <> target_status_code))
+        ORDER BY time
         LIMIT 50
     """
     try:
         result = run_query(
             sql=sql,
-            database="log_analysis",
-            workgroup="primary",
-            output_location="s3://your-athena-results-bucket/query-results/",
+            database=DATABASE,
+            workgroup=WORKGROUP,
+            output_location=OUTPUT_LOCATION,
         )
     except (ClientError, RuntimeError, TimeoutError) as e:
         print(f"[ERROR] {e}")
@@ -128,6 +166,13 @@ def main() -> None:
     for row in result["rows"]:
         print(" | ".join("" if v is None else v for v in row))
     print(f"\n{len(result['rows'])} 件")
+
+    if not result["rows"]:
+        print("0 件のときの確認順序:")
+        print("  1. day の指定が正しいか（ログは UTC 日付でパーティションされる）")
+        print(f"     aws s3 ls {DAY.replace('/', '/')}/ を含むパスで実際のファイルを確認")
+        print("  2. SELECT * FROM " + TABLE + f" WHERE day='{DAY}' LIMIT 5 で生の行が引けるか")
+        print("  3. 引けた行が NULL だらけなら input.regex と列の対応ズレ")
 
 
 if __name__ == "__main__":

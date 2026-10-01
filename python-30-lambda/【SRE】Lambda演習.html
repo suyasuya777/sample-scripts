@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>【SRE】Lambda演習</title>
+<style>
+:root{
+  --bg:#eceff3; --surface:#ffffff; --surface2:#f6f8fa;
+  --ink:#17222e; --muted:#5d6d7c; --line:#d3dae1;
+  --act:#2d5c7a; --act-ink:#ffffff;
+  --ok:#1b6b4c; --ok-bg:#e6f2ec;
+  --ng:#9c3630; --ng-bg:#f7e9e8;
+  --combo:#8a6a12; --combo-bg:#f5eed9;
+  --radius:4px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#11171d; --surface:#19212a; --surface2:#1f2831;
+    --ink:#e2e8ee; --muted:#93a3b1; --line:#2c3944;
+    --act:#6fa8cc; --act-ink:#10171d;
+    --ok:#6cc39b; --ok-bg:#16302a;
+    --ng:#e08b85; --ng-bg:#331e1e;
+    --combo:#d7b45a; --combo-bg:#332c16;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic",Meiryo,system-ui,sans-serif;
+  font-size:15px; line-height:1.75;
+  -webkit-text-size-adjust:100%;
+}
+code,.mono{font-family:ui-monospace,"Cascadia Mono","Consolas","Yu Gothic",monospace;font-size:.92em}
+code{background:var(--surface2); border:1px solid var(--line); border-radius:3px; padding:.05em .3em; word-break:break-all}
+.wrap{max-width:740px; margin:0 auto; padding:20px 16px 72px}
+h1{font-size:19px; margin:0; font-weight:700; letter-spacing:.02em}
+h2{font-size:16px; margin:28px 0 10px; font-weight:700}
+.sub{color:var(--muted); font-size:13px; margin-top:2px}
+header.top{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:12px; flex-wrap:wrap; border-bottom:2px solid var(--ink); padding-bottom:10px; margin-bottom:18px;
+}
+button{font:inherit; color:inherit; cursor:pointer}
+.btn{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  padding:5px 12px; font-size:13px; line-height:1.6;
+}
+.btn:hover{border-color:var(--act); color:var(--act)}
+.btn.primary{background:var(--act); color:var(--act-ink); border-color:var(--act)}
+.btn.primary:hover{opacity:.88; color:var(--act-ink)}
+.btn.danger:hover{border-color:var(--ng); color:var(--ng)}
+:focus-visible{outline:2px solid var(--act); outline-offset:2px}
+
+/* ── ジャンル一覧 ───────────────────── */
+.glist{border-top:1px solid var(--line)}
+.grow{border-bottom:1px solid var(--line); padding:11px 0; display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap}
+.gmain{flex:1 1 300px; min-width:0}
+.gname{font-weight:600}
+.gmeta{color:var(--muted); font-size:12px}
+.gacts{display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+.bar{display:flex; height:6px; width:100%; max-width:260px; margin-top:6px; border:1px solid var(--line); background:var(--surface)}
+.bar i{display:block; height:100%}
+.bar .b-combo{background:var(--combo)}
+.bar .b-hit{background:var(--act); opacity:.55}
+.bar .b-jab{background:var(--act); opacity:.28}
+.bar .b-miss{background:transparent}
+.count{font-variant-numeric:tabular-nums; font-size:12px; color:var(--muted); white-space:nowrap}
+.count b{color:var(--ink); font-weight:600}
+.done .gname::after{content:"  コンプリート"; color:var(--combo); font-size:11px; font-weight:600}
+
+/* ── 出題 ─────────────────────────── */
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px}
+.qhead{display:flex; justify-content:space-between; gap:10px; align-items:center; font-size:12px; color:var(--muted); margin-bottom:10px; flex-wrap:wrap}
+.qid{font-variant-numeric:tabular-nums}
+.qtext{font-size:16px; font-weight:600; line-height:1.8; margin:0 0 14px}
+.choices{display:flex; flex-direction:column; gap:8px}
+.ch{
+  display:flex; gap:10px; align-items:flex-start; text-align:left; width:100%;
+  background:var(--surface2); border:1px solid var(--line); border-radius:var(--radius);
+  padding:10px 12px; line-height:1.7;
+}
+.ch:hover:not(:disabled){border-color:var(--act)}
+.ch:disabled{cursor:default}
+.ch .k{
+  flex:0 0 auto; width:20px; height:20px; margin-top:2px; border:1px solid var(--line);
+  border-radius:3px; display:grid; place-items:center; font-size:11px; color:var(--muted);
+  font-variant-numeric:tabular-nums; background:var(--surface);
+}
+.ch.pick-ok{background:var(--ok-bg); border-color:var(--ok)}
+.ch.pick-ok .k{border-color:var(--ok); color:var(--ok)}
+.ch.pick-ng{background:var(--ng-bg); border-color:var(--ng)}
+.ch.pick-ng .k{border-color:var(--ng); color:var(--ng)}
+.ch.reveal{border-color:var(--ok)}
+.verdict{margin:16px 0 0; padding-top:14px; border-top:1px solid var(--line)}
+.vtag{font-weight:700}
+.vtag.ok{color:var(--ok)}
+.vtag.ng{color:var(--ng)}
+.exp{margin:6px 0 0; font-size:14px}
+.ref{margin-top:8px; font-size:12px; color:var(--muted)}
+.rankline{display:flex; align-items:center; gap:8px; margin-top:12px; font-size:12px; color:var(--muted); flex-wrap:wrap}
+.pips{display:flex; gap:3px}
+.pips i{width:11px; height:11px; border:1px solid var(--line); border-radius:2px; display:block}
+.pips i.on{background:var(--act); border-color:var(--act)}
+.pips i.full{background:var(--combo); border-color:var(--combo)}
+.navrow{display:flex; justify-content:space-between; gap:10px; margin-top:16px; align-items:center; flex-wrap:wrap}
+.hint{font-size:11px; color:var(--muted)}
+
+/* ── 結果・成績 ───────────────────── */
+.banner{border:1px solid var(--combo); background:var(--combo-bg); border-radius:var(--radius); padding:14px 16px; margin-bottom:16px}
+.banner h2{margin:0 0 4px; font-size:16px}
+table{border-collapse:collapse; width:100%; font-size:13px}
+th,td{border-bottom:1px solid var(--line); padding:7px 6px; text-align:right; font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left; font-variant-numeric:normal}
+thead th{border-bottom:1.5px solid var(--ink); font-weight:600; color:var(--muted); font-size:12px}
+tbody tr:hover{background:var(--surface2)}
+tfoot td{font-weight:600; border-top:1.5px solid var(--ink); border-bottom:none}
+.toolbar{display:flex; gap:8px; flex-wrap:wrap; margin:14px 0}
+.note{font-size:12px; color:var(--muted); margin-top:10px}
+.hide{display:none !important}
+input[type=file]{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <h1>【SRE】Lambda演習</h1>
+    <div class="sub" id="subhead"></div>
+  </div>
+  <div class="gacts">
+    <button class="btn" id="navHome">ジャンル一覧</button>
+    <button class="btn" id="navStats">学習成績</button>
+  </div>
+</header>
+
+<!-- ホーム -->
+<section id="home">
+  <div class="grow" style="border-top:1px solid var(--line)">
+    <div class="gmain">
+      <div class="gname">全ジャンル</div>
+      <div class="gmeta" id="allMeta"></div>
+      <div class="bar" id="allBar"></div>
+    </div>
+    <div class="gacts">
+      <button class="btn" data-scope="*" data-mode="all">全て</button>
+      <button class="btn primary" data-scope="*" data-mode="noncombo">コンボを除く</button>
+    </div>
+  </div>
+  <div class="glist" id="glist"></div>
+  <p class="note">
+    3回連続で正解すると「コンボ」。1回でも誤答すると「ミス」に戻ります。<br>
+    <b>全て</b>＝そのジャンルを1周して現在地を把握する。<b>コンボを除く</b>＝未コンボだけを繰り返し、コンプリートまで潰す。
+  </p>
+</section>
+
+<!-- 出題 -->
+<section id="quiz" class="hide">
+  <div class="card">
+    <div class="qhead">
+      <span class="qid" id="qid"></span>
+      <span id="qprog"></span>
+    </div>
+    <p class="qtext" id="qtext"></p>
+    <div class="choices" id="choices"></div>
+    <div class="verdict hide" id="verdict">
+      <div><span class="vtag" id="vtag"></span> <span id="vrank"></span></div>
+      <p class="exp" id="vexp"></p>
+      <div class="ref" id="vref"></div>
+      <div class="rankline">
+        <span>連続正解</span>
+        <span class="pips" id="pips"></span>
+        <span id="pipstext"></span>
+      </div>
+    </div>
+    <div class="navrow">
+      <button class="btn" id="quitBtn">中断して一覧へ</button>
+      <div class="gacts">
+        <span class="hint" id="kbdHint">1〜4 キーで選択</span>
+        <button class="btn primary hide" id="nextBtn">次の問題</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- セッション結果 -->
+<section id="result" class="hide">
+  <div class="banner" id="resultBanner">
+    <h2 id="rTitle"></h2>
+    <div id="rBody"></div>
+  </div>
+  <div class="toolbar">
+    <button class="btn primary" id="rAgain"></button>
+    <button class="btn" id="rHome">ジャンル一覧へ</button>
+    <button class="btn" id="rStats">学習成績を見る</button>
+  </div>
+</section>
+
+<!-- 学習成績 -->
+<section id="stats" class="hide">
+  <h2>ジャンル別</h2>
+  <table>
+    <thead>
+      <tr><th>ジャンル</th><th>問数</th><th>ミス</th><th>ジャブ</th><th>ヒット</th><th>コンボ</th><th>誤答</th><th>正答率</th></tr>
+    </thead>
+    <tbody id="statBody"></tbody>
+    <tfoot id="statFoot"></tfoot>
+  </table>
+
+  <h2>直近のセッション</h2>
+  <table>
+    <thead><tr><th>日時</th><th>範囲</th><th>出題</th><th>正答</th><th>結果</th></tr></thead>
+    <tbody id="sessBody"></tbody>
+  </table>
+
+  <h2>履歴の保管</h2>
+  <div class="toolbar">
+    <button class="btn primary" id="expBtn">JSONを書き出す</button>
+    <button class="btn" id="impBtn">JSONを読み込む</button>
+    <input type="file" id="impFile" accept="application/json,.json">
+    <button class="btn danger" id="resetBtn">履歴をリセット</button>
+  </div>
+  <p class="note">
+    履歴はこのブラウザのローカル領域にだけ保存されます。サイトデータの削除やプライベートウィンドウでは消えます。
+    各期末（3/21・3/28・4/4・4/11・4/14）に書き出して保管してください。
+  </p>
+</section>
+
+</div>
+
+<script>
+const GENRES = [
+  { id: "01", name: "Lambda 実行基盤とハンドラ", phase: "第1期", day: "3/15〜3/17", file: "（全サンプル共通）" },
+  { id: "02", name: "EventBridge 定期実行", phase: "第1期", day: "3/16〜3/19", file: "eventbridge_scheduled_job.py" },
+  { id: "03", name: "実行環境の再利用とシークレット", phase: "第1期", day: "3/17〜3/19", file: "secrets_manager_ssm.py" },
+  { id: "04", name: "S3 イベント", phase: "第1期", day: "3/18〜3/21", file: "s3_event_integration.py" },
+  { id: "05", name: "署名付きURLとSNS発行", phase: "第1期", day: "3/21〜3/24", file: "s3_presigned_url.py / sns_publisher.py" },
+  { id: "06", name: "API Gateway プロキシ統合", phase: "第2期", day: "3/22〜3/25", file: "rest_api.py" },
+  { id: "07", name: "Cognito Pre Sign-up", phase: "第2期", day: "3/24〜3/28", file: "cognito_pre_signup_trigger.py" },
+  { id: "08", name: "SQS イベントソース", phase: "第3期", day: "3/29〜3/31", file: "sqs_sns_integration.py" },
+  { id: "09", name: "DynamoDB Streams", phase: "第3期", day: "4/1〜4/4", file: "dynamodb_streams_trigger.py" },
+  { id: "10", name: "エラー設計・DLQ・冪等性", phase: "第3期", day: "4/2〜4/5", file: "error_handling_dlq.py" },
+  { id: "11", name: "統合：API GW → DynamoDB → SES", phase: "第4期", day: "4/5〜4/7", file: "api_gateway_dynamodb_ses_integration/" },
+  { id: "12", name: "VPC・RDS 接続", phase: "第4期", day: "4/8〜4/11", file: "vpc_rds_connection.py" },
+  { id: "13", name: "Step Functions", phase: "第4期", day: "4/11〜4/13", file: "step_functions_trigger.py" },
+  { id: "14", name: "Powertools と可観測性", phase: "第5期", day: "4/12〜4/14", file: "powertools_middleware.py" }
+];
+
+const QUESTIONS = [
+  // ── 01 Lambda 実行基盤とハンドラ ──────────────────────────
+  { id: "01-01", g: "01",
+    q: "`lambda_handler(event, context)` の第2引数 `context` から取得できないものはどれか。",
+    c: ["残りの実行可能時間（`get_remaining_time_in_millis()`）", "関数名とバージョン", "このリクエストの AWS リクエストID", "イベントを発生させたサービス名"],
+    a: 3,
+    e: "`context` は実行環境そのものの情報（関数名、リクエストID、残り時間、メモリ上限、ロググループ名など）を持ちます。どのサービスから呼ばれたかは `event` 側の構造で判断します。S3 なら `Records[].s3`、EventBridge なら `source` といった具合に、イベントソースごとに形が違うのがこの1ヶ月の主眼です。",
+    r: "全サンプル共通" },
+  { id: "01-02", g: "01",
+    q: "Terraform で `aws_cloudwatch_log_group` を明示的に作る理由として正しいものはどれか。",
+    c: ["明示的に作らないと Lambda のログが一切出力されないため", "Lambda が自動作成したロググループは保持期間が無期限になるため", "ロググループを先に作らないと関数のデプロイが失敗するため", "自動作成されたロググループは Logs Insights の対象外になるため"],
+    a: 1,
+    e: "ロググループは初回実行時に Lambda が自動作成しますが、そのとき保持期間は「無期限」になります。ログが溜まり続けて課金されるので、`retention_in_days` を付けた状態で先に作っておくのが定石です。",
+    r: "3/15 基盤構築" },
+  { id: "01-03", g: "01",
+    q: "S3 や API Gateway からトリガを構成したのに Lambda が起動しない。最初に疑うべきものはどれか。",
+    c: ["実行ロールに `AWSLambdaBasicExecutionRole` が付いていない", "`aws_lambda_permission`（リソースベースポリシー）を付けていない", "関数のタイムアウトが短すぎる", "予約済み同時実行数が 0 になっている"],
+    a: 1,
+    e: "他サービスが Lambda を呼ぶ許可は、関数側のリソースベースポリシーで与えます。Terraform では `aws_lambda_permission` です。実行ロール（Lambda が他サービスを呼ぶための権限）とは向きが逆で、ここを混同するのがこの月で一番多いつまずきです。",
+    r: "3/16・3/19・3/23" },
+  { id: "01-04", g: "01",
+    q: "Lambda の実行ロールが制御する範囲として正しいものはどれか。",
+    c: ["Lambda が DynamoDB や S3 など他のサービスを呼ぶときの権限", "誰がこの Lambda 関数を呼び出せるか", "関数が接続できる VPC とサブネットの範囲", "関数のログをどのロググループに書くかの指定"],
+    a: 0,
+    e: "実行ロールは「Lambda から外向き」の権限です。「誰が呼べるか」はリソースベースポリシー側。教材では `AWSLambdaBasicExecutionRole` だけから始め、`AccessDenied` を読みながら必要な権限を足していく進め方を取ります。",
+    r: "3/15 基盤構築" },
+  { id: "01-05", g: "01",
+    q: "教材のサンプルが `boto3.client(\"s3\")` などをハンドラ関数の外（モジュールスコープ）に書いている理由はどれか。",
+    c: ["ハンドラ内に書くと boto3 が import エラーになるため", "実行環境が再利用される間、クライアント生成が1回で済むため", "モジュールスコープに書かないと IAM 権限が解決されないため", "Lambda の仕様でハンドラ内に boto3 を書くことが禁止されているため"],
+    a: 1,
+    e: "Lambda は実行環境（コンテナ）を使い回します。モジュールスコープのコードはコールドスタート時にだけ走るので、クライアント生成や設定取得をここに置くと2回目以降の呼び出しが速くなります。`secrets_manager_ssm.py` のキャッシュも同じ仕組みを使っています。",
+    r: "全サンプル共通" },
+  { id: "01-06", g: "01",
+    q: "`api_gateway_dynamodb_ses_integration` は handler.py / db.py / mailer.py の3ファイル構成になっている。handler.py の `import db` が成立する条件はどれか。",
+    c: ["3ファイルが zip のルート直下に同じ階層で入っていること", "db.py を Lambda Layer として別に配置すること", "`PYTHONPATH` に `/var/task` を明示的に設定すること", "handler.py で `from . import db` と相対 import に書き換えること"],
+    a: 0,
+    e: "Lambda はデプロイパッケージを `/var/task` に展開し、そこが `sys.path` に入ります。3ファイルが同階層にあれば `import db` はそのまま通ります。Terraform では `archive_file` の `source_dir` にディレクトリを指定して固めます。",
+    r: "api_gateway_dynamodb_ses_integration/handler.py" },
+  { id: "01-07", g: "01",
+    q: "Python ランタイムにあらかじめ同梱されているライブラリはどれか。",
+    c: ["boto3", "pymysql", "aws_lambda_powertools", "requests"],
+    a: 0,
+    e: "同梱されているのは boto3（と botocore）だけです。`vpc_rds_connection.py` の `pymysql` や `powertools_middleware.py` の Powertools は、Lambda Layer を使うか、依存を含めた zip を自分で作る必要があります。`ModuleNotFoundError` の原因はほぼこれです。",
+    r: "vpc_rds_connection.py / powertools_middleware.py" },
+  { id: "01-08", g: "01",
+    q: "ハンドラの戻り値について正しいものはどれか。",
+    c: ["どの呼び出し方でも必ず呼び出し元に返る", "同期（RequestResponse）では呼び出し元に返るが、非同期（Event）では捨てられる", "非同期呼び出しでは DLQ に自動で格納される", "戻り値が dict 以外だと必ず実行エラーになる"],
+    a: 1,
+    e: "非同期呼び出しでは戻り値を受け取る相手がいないので捨てられます。結果を残したいなら Lambda Destinations（`OnSuccess` / `OnFailure`）を使います。`error_handling_dlq.py` が 400 を「返す」だけでは非同期経路では誰も見ない、という論点にそのままつながります。",
+    r: "error_handling_dlq.py" },
+
+  // ── 02 EventBridge 定期実行 ────────────────────────────────
+  { id: "02-01", g: "02",
+    q: "`eventbridge_scheduled_job.py` が読んでいる `event[\"time\"]` に入っているものはどれか。",
+    c: ["関数がコールドスタートした時刻", "スケジュールされたイベントの発生時刻（ISO 8601 形式の文字列）", "前回実行からの経過秒数", "`datetime` 型の実行時刻オブジェクト"],
+    a: 1,
+    e: "EventBridge のイベントは `time` に ISO 8601 形式の文字列で発生時刻を持ちます。`datetime` ではなく文字列なので、日付計算をするならパースが必要です。コードは別途 `datetime.now(timezone.utc)` で当月1日を組み立てています。",
+    r: "eventbridge_scheduled_job.py" },
+  { id: "02-02", g: "02",
+    q: "`cron(0 17 * * ? *)` は日本時間では何時の実行になるか。",
+    c: ["毎日 17:00", "毎日 翌 2:00", "毎日 8:00", "毎日 12:00"],
+    a: 1,
+    e: "EventBridge の cron 式は UTC で解釈されます。UTC 17:00 は JST（+9時間）で翌日 2:00。コード中のコメントもそうなっています。JST のつもりで書くと9時間ずれるのが定番の事故です。",
+    r: "eventbridge_scheduled_job.py" },
+  { id: "02-03", g: "02",
+    q: "cron 式と rate 式の使い分けとして正しいものはどれか。",
+    c: ["rate 式は「5分ごと」のような間隔指定、cron 式は「毎日2時」のような時刻指定に使う", "rate 式は秒単位、cron 式は分単位でしか指定できない", "rate 式は UTC、cron 式はローカルタイムゾーンで解釈される", "rate 式は1日1回までしか指定できない"],
+    a: 0,
+    e: "`rate(5 minutes)` は「前回から5分後」という間隔の指定、`cron(0 17 * * ? *)` は「その時刻ちょうど」という指定です。どちらも UTC 基準です。曜日と日の両方を指定できないため、cron 式ではどちらかに `?` を置きます。",
+    r: "eventbridge_scheduled_job.py" },
+  { id: "02-04", g: "02",
+    q: "EventBridge のイベントに共通して含まれるキーの組み合わせはどれか。",
+    c: ["`Records` / `eventName` / `eventSource`", "`source` / `detail-type` / `time` / `resources`", "`httpMethod` / `path` / `headers`", "`request` / `response` / `userName`"],
+    a: 1,
+    e: "EventBridge は `source`（発生元）、`detail-type`（イベント種別）、`time`、`resources`、`detail` という共通の封筒を持ちます。`Records` 配列は S3 や SQS の形、`httpMethod` は API Gateway の形、`request`/`response` は Cognito の形です。",
+    r: "eventbridge_scheduled_job.py" },
+  { id: "02-05", g: "02",
+    q: "`cleanup_old_records` が `while True` と `LastEvaluatedKey` でループしているのはなぜか。",
+    c: ["DynamoDB の `scan` は1回の呼び出しで全件を返すとは限らないため", "`delete_item` が非同期で実行されるため完了を待つ必要があるため", "`FilterExpression` が1回の呼び出しでは適用されないため", "Lambda のタイムアウトを回避するために意図的に分割しているため"],
+    a: 0,
+    e: "`scan` は1回あたり最大1MBまでしか読まず、続きがあれば `LastEvaluatedKey` を返します。これを `ExclusiveStartKey` に渡して続きを読む、というのが DynamoDB のページングの型です。boto3 期間の paginator と同じ論点です。",
+    r: "eventbridge_scheduled_job.py" },
+  { id: "02-06", g: "02",
+    q: "`ProjectionExpression: \"id\"` を指定したときの効果はどれか。",
+    c: ["`id` 属性を持つ項目だけが返る", "返ってくる項目から `id` 属性だけを取り出す（転送量を減らす）", "`id` でソートされた順序で返る", "`id` をパーティションキーとして検索する"],
+    a: 1,
+    e: "`ProjectionExpression` は「取得する属性を絞る」指定です。項目を絞るのは `FilterExpression`、キーで引くのは `KeyConditionExpression` と、役割が3つに分かれています。ここでは削除に `id` しか要らないので他の属性を捨てています。",
+    r: "eventbridge_scheduled_job.py" },
+  { id: "02-07", g: "02",
+    q: "`FilterExpression` を付けた `scan` の読み取り消費について正しいものはどれか。",
+    c: ["条件に合致した項目のぶんだけ消費される", "条件の有無にかかわらず、読み取った項目すべてのぶんが消費される", "`ProjectionExpression` を併用すると消費がゼロになる", "`scan` では読み取り消費が発生しない"],
+    a: 1,
+    e: "`FilterExpression` は読み取ったあとに絞り込むので、消費は絞られません。1000件読んで1件しか返らなくても1000件ぶん払います。定期クリーンアップの設計では、GSI やキー設計で `query` に寄せられないかを先に考えます。",
+    r: "eventbridge_scheduled_job.py" },
+
+  // ── 03 実行環境の再利用とシークレット ──────────────────────
+  { id: "03-01", g: "03",
+    q: "`_secrets_cache` をモジュールスコープに置いていることで得られる効果はどれか。",
+    c: ["同じ実行環境が再利用される間、Secrets Manager の API 呼び出しを省ける", "複数の Lambda 関数の間でキャッシュが共有される", "シークレットが暗号化された状態でメモリに保持される", "同時実行されたすべての呼び出しが同じキャッシュを参照する"],
+    a: 0,
+    e: "キャッシュが効くのは「同じ実行環境の中だけ」です。別の実行環境（コールドスタート・同時実行で増えた環境）はそれぞれ空のキャッシュを持ちます。関数をまたいだ共有もありません。",
+    r: "secrets_manager_ssm.py" },
+  { id: "03-02", g: "03",
+    q: "`get_secret_value` の戻り値から値を取り出す正しい経路はどれか。",
+    c: ["`result[\"Secret\"]` を dict としてそのまま使う", "`result[\"SecretString\"]` を `json.loads` する", "`result[\"Parameter\"][\"Value\"]` を参照する", "`result[\"Body\"].read()` でバイト列を読む"],
+    a: 1,
+    e: "`SecretString` は文字列です。DB 認証情報のように JSON を入れている場合は `json.loads` が必要になります。`result[\"Parameter\"][\"Value\"]` は SSM Parameter Store 側の形で、2つを取り違えやすいところです。",
+    r: "secrets_manager_ssm.py" },
+  { id: "03-03", g: "03",
+    q: "`ssm_client.get_parameter` の戻り値から値を取り出す正しい経路はどれか。",
+    c: ["`result[\"Value\"]`", "`result[\"Parameter\"][\"Value\"]`", "`result[\"Parameters\"][0]`", "`result[\"SecretString\"]`"],
+    a: 1,
+    e: "単数形の `get_parameter` は `Parameter` というキーの中に `Value` / `Type` / `Version` を入れて返します。複数取得の `get_parameters` は `Parameters` 配列になり、形が変わります。",
+    r: "secrets_manager_ssm.py" },
+  { id: "03-04", g: "03",
+    q: "`WithDecryption=True` が意味を持つのはどのパラメータ型で、何の権限が追加で要るか。",
+    c: ["String 型／追加の権限は不要", "SecureString 型／KMS の `kms:Decrypt` 権限", "StringList 型／SSM の `ssm:GetParameters` 権限", "どの型でも必要／IAM の `iam:PassRole` 権限"],
+    a: 1,
+    e: "SecureString は KMS で暗号化されているので、復号のために `kms:Decrypt` が要ります。実行ロールに SSM の権限だけ付けて `AccessDenied` になるのが典型です。boto3 期間（2/21）で触れたのと同じ論点です。",
+    r: "secrets_manager_ssm.py" },
+  { id: "03-05", g: "03",
+    q: "グローバルキャッシュに置くべきでない情報として、最も注意が要るものはどれか。",
+    c: ["環境ごとに固定の API エンドポイント", "定期的にローテーションされる DB のパスワード", "リージョン名", "ログレベルの設定値"],
+    a: 1,
+    e: "実行環境は数十分〜数時間生き続けることがあります。ローテーションされる値をコールドスタート時に1回取って持ち続けると、更新後も古い値を使って認証エラーになります。TTL を付けるか、認証失敗時にキャッシュを捨てて取り直す作りが要ります。",
+    r: "secrets_manager_ssm.py" },
+  { id: "03-06", g: "03",
+    q: "グローバル変数にリクエスト固有の値（そのリクエストのユーザーIDなど）を入れてはいけない理由はどれか。",
+    c: ["Lambda がグローバル変数への書き込みを禁止しているため", "実行環境が再利用されるため、次のリクエストに前の値が残るため", "グローバル変数はコールドスタートのたびに初期化されないため", "メモリ使用量が同時実行数ぶん増えるため"],
+    a: 1,
+    e: "同じ実行環境が次のリクエストにも使われます。リクエスト固有の値をモジュールスコープに書くと、次の人のリクエストで前の値が見えてしまいます。キャッシュしてよいのは「リクエストをまたいで同じもの」だけ、という線引きです。",
+    r: "secrets_manager_ssm.py" },
+  { id: "03-07", g: "03",
+    q: "`get_secret` が `ClientError` をログに出したあと `raise` し直しているのはなぜか。",
+    c: ["ログ出力だけでは CloudWatch に記録されないため", "呼び出し元と Lambda に「この実行は失敗した」と伝えるため", "`ClientError` は `raise` しないと boto3 が再試行しないため", "`raise` しないとキャッシュが更新されないため"],
+    a: 1,
+    e: "ログに書いて握りつぶすと、Lambda の実行は成功扱いになります。非同期呼び出しならリトライされず、メトリクス上もエラーとして見えません。ログに残したうえで再送出する、というのが基本の型です。",
+    r: "secrets_manager_ssm.py" },
+
+  // ── 04 S3 イベント ────────────────────────────────────────
+  { id: "04-01", g: "04",
+    q: "`urllib.parse.unquote_plus` でキーをデコードしている理由はどれか。",
+    c: ["キーが Base64 でエンコードされて届くため", "キーが URL エンコードされて届き、スペースが `+` に置き換わっているため", "キーが UTF-8 以外の文字コードで届くため", "キーの先頭にバケット名が付いて届くため"],
+    a: 1,
+    e: "S3 イベントのオブジェクトキーは URL エンコードされ、スペースは `+` になります。`unquote` ではなく `unquote_plus` を使うのはこのためです。日本語ファイル名やスペース入りのファイルで実際に確認するのが 3/19 の作業です。",
+    r: "s3_event_integration.py" },
+  { id: "04-02", g: "04",
+    q: "S3 イベントのレコードからバケット名とキーを取り出す正しい経路はどれか。",
+    c: ["`record[\"bucket\"]` と `record[\"key\"]`", "`record[\"s3\"][\"bucket\"][\"name\"]` と `record[\"s3\"][\"object\"][\"key\"]`", "`record[\"detail\"][\"bucket\"]` と `record[\"detail\"][\"object\"]`", "`record[\"source\"]` と `record[\"resources\"][0]`"],
+    a: 1,
+    e: "S3 イベントは `Records[].s3.bucket.name` / `Records[].s3.object.key` という深い入れ子になっています。EventBridge 経由で S3 イベントを受けると `detail` 配下の別の形になるので、経路によって構造が変わる点も押さえておきます。",
+    r: "s3_event_integration.py" },
+  { id: "04-03", g: "04",
+    q: "S3 イベントの `Records` が配列になっているのはなぜか。",
+    c: ["1回の呼び出しに複数のイベントがまとめて届きうるため", "必ず10件単位でバッチ化されるため", "同じオブジェクトの複数バージョンを同時に渡すため", "リトライ時に過去のイベントも一緒に再送されるため"],
+    a: 0,
+    e: "複数件まとめて届くことがあるので、コードは必ずループで処理します。1件目だけ見て `return` する実装は、まとめて届いた日に静かに取りこぼします。SQS・DynamoDB Streams も同じ `Records` の形です。",
+    r: "s3_event_integration.py" },
+  { id: "04-04", g: "04",
+    q: "S3 トリガの Lambda が処理結果を同じバケットの同じプレフィックスに書き込むとどうなるか。",
+    c: ["書き込みは通知の対象外なので問題ない", "書き込みが新しいイベントを発生させ、無限ループになる", "S3 側が自動的に重複を検知して止める", "Lambda の再帰実行は仕様上できないため何も起きない"],
+    a: 1,
+    e: "出力もまた `ObjectCreated` を発生させ、自分自身を呼び続けます。入力と出力でプレフィックスを分ける（`input/` と `output/`）か、通知のフィルタでプレフィックスを限定します。課金が一気に伸びる事故なので、構成時に必ず確認します。",
+    r: "s3_event_integration.py" },
+  { id: "04-05", g: "04",
+    q: "`dispatch` に `reports/月次レポート.CSV` というキーが渡されたとき、呼ばれる関数はどれか。",
+    c: ["`process_image`", "`process_csv`", "`process_default`", "拡張子の大文字小文字が混在しているため例外になる"],
+    a: 1,
+    e: "`key.rsplit(\".\", 1)[-1].lower()` で `csv` になるので `process_csv` が呼ばれます。拡張子がまったくないキーのときは `ext` が空文字になり `process_default` に落ちます。",
+    r: "s3_event_integration.py" },
+  { id: "04-06", g: "04",
+    q: "S3 イベント通知の配信保証について正しいものはどれか。",
+    c: ["ちょうど1回だけ配信される", "少なくとも1回配信される（同じイベントが重複しうる）", "最大1回の配信で、失われることはあっても重複はしない", "順序が保証され、重複も発生しない"],
+    a: 1,
+    e: "少なくとも1回の配信なので、まれに同じイベントが2回届きます。処理が冪等でないと二重登録や二重送信が起きます。この期間で何度も出てくる冪等性の話は、ここから始まっています。",
+    r: "s3_event_integration.py" },
+  { id: "04-07", g: "04",
+    q: "S3 から Lambda を直接トリガするために Terraform で必要なリソースの組み合わせはどれか。",
+    c: ["`aws_s3_bucket_notification` と `aws_lambda_permission`", "`aws_s3_bucket_notification` のみ", "`aws_lambda_event_source_mapping` のみ", "`aws_cloudwatch_event_rule` と `aws_lambda_permission`"],
+    a: 0,
+    e: "通知の設定（S3側）と、S3 からの呼び出しを許可するリソースベースポリシー（Lambda側）の両方が要ります。`aws_lambda_event_source_mapping` は SQS や DynamoDB Streams のように Lambda 側がポーリングする方式で使うもので、S3 では使いません。",
+    r: "s3_event_integration.py" },
+
+  // ── 05 署名付きURLとSNS発行 ───────────────────────────────
+  { id: "05-01", g: "05",
+    q: "署名付き URL でアクセスできる範囲を決めているのはどれか。",
+    c: ["URL を受け取ったクライアントの IAM 権限", "URL を生成した主体（ここでは Lambda の実行ロール）の権限", "バケットのパブリックアクセスブロック設定のみ", "URL に含まれる `ExpiresIn` の値のみ"],
+    a: 1,
+    e: "署名付き URL は「発行者の権限を借りたリンク」です。URL を知っている人は誰でも、発行者の権限でその操作ができます。だから URL の配り方と有効期限が設計の中心になります。",
+    r: "s3_presigned_url.py" },
+  { id: "05-02", g: "05",
+    q: "`ClientMethod=\"put_object\"` で生成した URL は、クライアントがどう使うものか。",
+    c: ["GET でファイルを取得する", "PUT でファイルをアップロードする", "POST でフォーム送信する", "DELETE でオブジェクトを削除する"],
+    a: 1,
+    e: "`put_object` 用の URL には PUT でアップロードします。`generate_download_url` 側は `get_object` なので GET です。ClientMethod がそのまま HTTP メソッドに対応する、と覚えておくと迷いません。",
+    r: "s3_presigned_url.py" },
+  { id: "05-03", g: "05",
+    q: "`Config(signature_version=\"s3v4\")` を明示している理由はどれか。",
+    c: ["署名付き URL を SigV4 で生成させるため", "URL の有効期限を7日以上に延ばすため", "マルチパートアップロードを有効にするため", "バケットの暗号化方式を指定するため"],
+    a: 0,
+    e: "リージョンや設定によって署名バージョンが変わると、生成した URL が想定どおりに動かないことがあります。SigV4 を明示しておくのが確実です。なお SigV4 の署名付き URL の最大有効期限は7日間です。",
+    r: "s3_presigned_url.py" },
+  { id: "05-04", g: "05",
+    q: "`ExpiresIn` を過ぎた署名付き URL にアクセスするとどうなるか。",
+    c: ["404 Not Found が返る", "403（AccessDenied）が返る", "URL が自動で再発行される", "301 でバケットのルートにリダイレクトされる"],
+    a: 1,
+    e: "期限切れは「権限がない」として扱われるので AccessDenied です。オブジェクトが存在しないわけではないので 404 にはなりません。この違いは障害調査のときに効いてきます。",
+    r: "s3_presigned_url.py" },
+  { id: "05-05", g: "05",
+    q: "アップロード用 URL の `Params` に `ContentType` を含めると、何が起きるか。",
+    c: ["アップロードされたファイルが自動的にその形式に変換される", "クライアントが同じ Content-Type を送らないと署名が合わず拒否される", "その Content-Type のファイルだけがバケットに保存される", "Content-Type はメタデータとして記録されるだけで制約にはならない"],
+    a: 1,
+    e: "`Params` に入れた値は署名の対象になります。クライアントが違う Content-Type で PUT すると署名不一致で弾かれるので、結果としてファイル種別を制限できます。サイズ制限をかけたい場合は、この方式ではなく POST のフォームポリシーが要ります。",
+    r: "s3_presigned_url.py" },
+  { id: "05-06", g: "05",
+    q: "`publish_standard` が `MessageAttributes` に `event_type` を入れているのは何のためか。",
+    c: ["サブスクリプションのフィルターポリシーで配信先を絞るため", "メッセージ本文の文字コードを指定するため", "重複排除の判定に使うため", "配信順序を保証するため"],
+    a: 0,
+    e: "メッセージ属性は本文とは別に付く「封筒のラベル」です。サブスクリプション側にフィルターポリシーを書くと、属性が一致するメッセージだけが配信されます。本文の中身では絞れないので、絞りたい値は属性に出します。",
+    r: "sns_publisher.py" },
+  { id: "05-07", g: "05",
+    q: "FIFO トピックへの `publish` で必須になるパラメータの組み合わせはどれか。",
+    c: ["`Subject` と `MessageAttributes`", "`MessageGroupId` と `MessageDeduplicationId`", "`MessageStructure` と `Subject`", "`TopicArn` のみで追加パラメータは不要"],
+    a: 1,
+    e: "FIFO では順序を保証する単位（`MessageGroupId`）と、重複排除の識別子（`MessageDeduplicationId`）が必須です。`publish_standard` 側にはどちらも付いていません。標準とFIFOで必要な引数が変わる点がコードから読み取れます。",
+    r: "sns_publisher.py" },
+  { id: "05-08", g: "05",
+    q: "同じ `MessageDeduplicationId` で2回 `publish` したときの挙動はどれか。",
+    c: ["2回とも配信される", "5分間の重複排除ウィンドウ内では1回しか配信されない", "2回目はエラーになる", "2回目は DLQ に送られる"],
+    a: 1,
+    e: "FIFO の重複排除ウィンドウは5分です。この間に同じ ID で送ると、受け付けはされますが配信は1回だけです。リトライで同じ ID を送り直せば二重配信を防げる、というのが使いどころです。",
+    r: "sns_publisher.py" },
+
+  // ── 06 API Gateway プロキシ統合 ───────────────────────────
+  { id: "06-01", g: "06",
+    q: "プロキシ統合で届く `event[\"body\"]` の型はどれか。",
+    c: ["dict（パース済み）", "文字列（必要なら自分で `json.loads` する）", "bytes", "リクエストが JSON なら dict、それ以外は文字列"],
+    a: 1,
+    e: "プロキシ統合の body は常に文字列です。`handle_post` が `json.loads(event.get(\"body\") or \"{}\")` としているのはこのためで、パース失敗を 400 で返す分岐まで含めて1セットです。",
+    r: "rest_api.py" },
+  { id: "06-02", g: "06",
+    q: "`(event.get(\"pathParameters\") or {}).get(\"id\")` と書いている理由はどれか。",
+    c: ["`pathParameters` が `None` で届く場合があるため", "`pathParameters` が list で届く場合があるため", "キー名が大文字小文字で揺れるため", "`get` を二重に呼ばないと型変換されないため"],
+    a: 0,
+    e: "パスパラメータを持たないルート（一覧取得など）では `pathParameters` は `None` になります。`event.get(\"pathParameters\", {})` だとキーは存在するので `{}` は返らず、`None.get` で落ちます。`or {}` が必要なのはそのためです。",
+    r: "rest_api.py" },
+  { id: "06-03", g: "06",
+    q: "プロキシ統合のレスポンスとして必須の要素はどれか。",
+    c: ["`statusCode` のみ", "`statusCode` と `body`", "`statusCode` / `headers` / `body`", "`statusCode` / `headers` / `body` / `isBase64Encoded`"],
+    a: 2,
+    e: "`response()` ヘルパーが返している3点セットです（`isBase64Encoded` はバイナリを返すときだけ必要な任意項目）。この形から外れた戻り値は API Gateway 側で扱えず、クライアントには内部詳細の出ないエラーが返ります。",
+    r: "rest_api.py" },
+  { id: "06-04", g: "06",
+    q: "`json.dumps(body, ensure_ascii=False)` の `ensure_ascii=False` は何のためか。",
+    c: ["日本語を `\\uXXXX` にエスケープせず、そのまま出力するため", "レスポンスの Content-Type を自動で設定するため", "body を dict のまま返せるようにするため", "文字数を減らして API Gateway の上限を回避するため"],
+    a: 0,
+    e: "既定では非 ASCII をすべてエスケープするので、日本語のメッセージが `\\u767b\\u9332...` になります。読めはしますが、ログでもレスポンスでも確認しづらいので、日本語を扱うなら明示するのが実務的です。",
+    r: "rest_api.py" },
+  { id: "06-05", g: "06",
+    q: "`method == \"OPTIONS\"` を 200 で返している理由はどれか。",
+    c: ["ブラウザが送る CORS プリフライトリクエストに応答するため", "API Gateway のヘルスチェックに応答するため", "メソッド一覧をクライアントに通知するため", "キャッシュを無効化するため"],
+    a: 0,
+    e: "別オリジンから PUT や DELETE、あるいはカスタムヘッダー付きのリクエストを送るとき、ブラウザは先に OPTIONS でプリフライトを投げます。ここで許可ヘッダーを返さないと、本体のリクエストがブラウザ側で止まります。",
+    r: "rest_api.py" },
+  { id: "06-06", g: "06",
+    q: "`rest_api.py` は `event.get(\"httpMethod\")` でメソッドを判定している。この書き方が前提としているものはどれか。",
+    c: ["REST API（ペイロード形式 1.0）であること", "HTTP API（ペイロード形式 2.0）であること", "どちらでも同じキーなので前提はない", "プロキシ統合を使っていないこと"],
+    a: 0,
+    e: "形式 1.0 は `httpMethod` をトップレベルに持ちますが、形式 2.0 では `requestContext.http.method` に移り、`version` キーが増えます。HTTP API に載せ替えると、このコードは全メソッドが 405 に落ちます。",
+    r: "rest_api.py" },
+  { id: "06-07", g: "06",
+    q: "`validate_item` の戻り値の設計として正しいものはどれか。",
+    c: ["bool を返し、`False` のとき 400 を返す", "エラーメッセージの文字列を返し、問題なければ `None` を返す", "例外を投げ、呼び出し元が捕まえる", "検証結果の dict を返す"],
+    a: 1,
+    e: "`str | None` を返す形で、呼び出し側は `if error:` で分岐して 400 に載せています。bool を返す設計と違い、何が悪かったかをそのままクライアントに返せるのが利点です。",
+    r: "rest_api.py" },
+  { id: "06-08", g: "06",
+    q: "API Gateway の統合タイムアウト上限（29秒）を踏まえたとき、正しいものはどれか。",
+    c: ["Lambda のタイムアウトを15分にすれば、API Gateway も15分待つ", "Lambda のタイムアウトを29秒より長くしても、API Gateway は29秒で打ち切る", "API Gateway 側の設定を変えれば最大15分まで延ばせる", "タイムアウトは Lambda 側の設定だけで決まる"],
+    a: 1,
+    e: "API Gateway が先に諦めるので、それより長いタイムアウトを Lambda に設定しても意味がありません。長時間処理を API から始めたいなら、非同期に投げて受付だけ返す（202）か、Step Functions に載せます。",
+    r: "rest_api.py" },
+  { id: "06-09", g: "06",
+    q: "`lambda_handler` がどの分岐にも当たらなかったときに返すステータスコードはどれか。",
+    c: ["400", "404", "405", "500"],
+    a: 2,
+    e: "405 Method Not Allowed を返しています。パスは合っているがメソッドが許可されていない、という意味です。パス自体が存在しない場合は Lambda まで届かず API Gateway が処理します。",
+    r: "rest_api.py" },
+
+  // ── 07 Cognito Pre Sign-up ────────────────────────────────
+  { id: "07-01", g: "07",
+    q: "Cognito Pre Sign-up トリガのハンドラが返すべきものはどれか。",
+    c: ["`{\"statusCode\": 200, \"body\": ...}` の形", "受け取った `event` を書き換えて、そのまま返す", "`{\"allow\": true}` という判定結果の dict", "何も返さない（`None`）"],
+    a: 1,
+    e: "このトリガだけは「event を加工して返す」型です。Cognito は返された event の `response` セクションを見て動きを決めます。他のイベントソースと根本的に違うので、3/24 はここを押さえる日にしてあります。",
+    r: "cognito_pre_signup_trigger.py" },
+  { id: "07-02", g: "07",
+    q: "バリデーションに失敗して `raise Exception(error)` したとき、Cognito 側はどうなるか。",
+    c: ["サインアップが拒否される", "サインアップは成立し、あとで確認メールが届かなくなる", "Cognito が自動的に3回リトライする", "ユーザーは作成され、無効化された状態になる"],
+    a: 0,
+    e: "Pre Sign-up トリガで例外を投げると、その時点でサインアップが失敗します。逆に言えば、ここを通ってしまえばユーザーは作られます。検証をここに集約するか、クライアント側と二重に持つかは設計判断になります。",
+    r: "cognito_pre_signup_trigger.py" },
+  { id: "07-03", g: "07",
+    q: "`event[\"response\"][\"autoConfirmUser\"] = True` にしたときの効果はどれか。",
+    c: ["確認コードの入力を省いて、ユーザーを確認済みとして作成する", "メールアドレスを検証済みとして扱う", "パスワードポリシーの検証を省略する", "管理者の承認待ち状態にする"],
+    a: 0,
+    e: "確認ステップを飛ばしてユーザーを有効にします。メールアドレスを検証済みにするのは `autoVerifyEmail` の方で、役割が分かれています。どちらも開発環境向けの近道で、本番でむやみに `True` にするものではありません。",
+    r: "cognito_pre_signup_trigger.py" },
+  { id: "07-04", g: "07",
+    q: "`autoVerifyEmail` を `True` にしたときの効果はどれか。",
+    c: ["確認コードの入力を省いてユーザーを有効にする", "メールアドレス属性を検証済みとしてマークする", "メールアドレスの形式チェックを自動で行う", "サインアップ完了メールを自動送信する"],
+    a: 1,
+    e: "`email_verified` 属性を検証済みにします。パスワードリセットなど、検証済みメールを前提にする機能がそのまま使えるようになります。`autoConfirmUser` とセットで扱われがちですが、意味は別です。",
+    r: "cognito_pre_signup_trigger.py" },
+  { id: "07-05", g: "07",
+    q: "このハンドラが `email` と `username` をそれぞれどこから取っているか、正しい組み合わせはどれか。",
+    c: ["どちらも `event[\"request\"][\"userAttributes\"]`", "email は `event[\"request\"][\"userAttributes\"]`、username は `event[\"userName\"]`", "どちらも `event[\"userName\"]` の中", "email は `event[\"response\"]`、username は `event[\"request\"]`"],
+    a: 1,
+    e: "ユーザー属性は `request.userAttributes` の下ですが、ユーザー名だけは event のトップレベルにある `userName` です。同じイベントの中で階層が分かれているので、素直に書いたつもりが `KeyError` になりやすいところです。",
+    r: "cognito_pre_signup_trigger.py" },
+  { id: "07-06", g: "07",
+    q: "メールドメインが不正なユーザーがサインアップしたとき、3つの検証関数はいくつ実行されるか。",
+    c: ["1つ（最初のエラーで打ち切られる）", "2つ", "3つすべて（リストを組み立てる時点で全部評価される）", "実行順序が不定なので決まらない"],
+    a: 2,
+    e: "`for error in [validate_email_domain(...), validate_username(...), validate_password_strength(...)]:` はリストを先に作ってからループします。つまり3つとも実行され、そのあと最初の非 `None` で `raise` します。短絡評価にしたいなら書き方を変える必要があります。",
+    r: "cognito_pre_signup_trigger.py" },
+
+  // ── 08 SQS イベントソース ─────────────────────────────────
+  { id: "08-01", g: "08",
+    q: "SNS → SQS → Lambda という構成のとき、`record[\"body\"]` に入っているものはどれか。",
+    c: ["発行したメッセージ本文がそのまま入っている", "SNS の封筒（`Type` や `Message` を含む JSON）の文字列が入っている", "Base64 エンコードされたメッセージが入っている", "SNS のメッセージ属性だけが入っている"],
+    a: 1,
+    e: "SQS の body の中に SNS の JSON が入れ子になります。さらに `Message` フィールドも文字列なので、本文にたどり着くには `json.loads` が2回必要です。`parse_body` はこれを吸収しています。",
+    r: "sqs_sns_integration.py" },
+  { id: "08-02", g: "08",
+    q: "`parse_body` が「SNS 経由である」と判定している条件はどれか。",
+    c: ["`record` に `Sns` キーがあること", "パース結果に `Message` と `Type` の両方が含まれること", "`eventSource` が `aws:sns` であること", "`body` が `{` で始まること"],
+    a: 1,
+    e: "SNS の封筒には `Type`（Notification など）と `Message` が必ず入ります。この2つを目印にして、直接 SQS に送られたメッセージと区別しています。両方を見るのは、たまたま `Message` というキーを持つ普通のメッセージと取り違えないためです。",
+    r: "sqs_sns_integration.py" },
+  { id: "08-03", g: "08",
+    q: "SQS をイベントソースにした Lambda で、正常に処理できたメッセージの削除は誰が行うか。",
+    c: ["ハンドラ内で `delete_message` を呼ぶ必要がある", "Lambda サービスが自動で削除する", "SQS のメッセージ保持期間が過ぎると消える", "`batchItemFailures` に含めなかったメッセージだけ手動で削除する"],
+    a: 1,
+    e: "イベントソースマッピングを使う場合、成功したメッセージは Lambda が削除します。自分で `delete_message` を呼ぶのは、boto3 から直接ポーリングする書き方（DLQ 再処理スクリプトなど）のときです。2月のやり方をそのまま持ち込むと二重管理になります。",
+    r: "sqs_sns_integration.py" },
+  { id: "08-04", g: "08",
+    q: "SQS と Lambda の間の動き方として正しいものはどれか。",
+    c: ["SQS がメッセージを Lambda に push する", "Lambda サービスが SQS をポーリングして取得する", "SNS が仲介してメッセージを転送する", "EventBridge が定期的に SQS を確認する"],
+    a: 1,
+    e: "イベントソースマッピングは Lambda 側のポーラーです。SQS は push しません。この向きが分かっていると、同時実行数の上限に当たったときの挙動や、キューが詰まる理由が理解しやすくなります。",
+    r: "sqs_sns_integration.py" },
+  { id: "08-05", g: "08",
+    q: "部分的失敗を報告するとき、ハンドラが返すべき構造はどれか。",
+    c: ["`{\"batchItemFailures\": [{\"itemIdentifier\": messageId}]}`", "`{\"failures\": [messageId]}`", "`{\"statusCode\": 500, \"failed\": [messageId]}`", "`{\"batchItemFailures\": [messageId]}`"],
+    a: 0,
+    e: "キー名は `batchItemFailures`、要素は `itemIdentifier` を持つ dict です。要素を文字列のまま並べても認識されません。キー名が1文字違うだけで黙って無視され、全件再試行になるので、ここは正確に覚えます。",
+    r: "sqs_sns_integration.py" },
+  { id: "08-06", g: "08",
+    q: "ハンドラ側で `batchItemFailures` を返しているのに部分的失敗が機能しない。原因として最も確からしいものはどれか。",
+    c: ["イベントソースマッピングに `function_response_types = [\"ReportBatchItemFailures\"]` を設定していない", "キューが FIFO ではなく標準キューになっている", "バッチサイズが 10 より大きい", "関数の同時実行数が予約されていない"],
+    a: 0,
+    e: "戻り値のキー名と、イベントソースマッピング側の設定の両方が揃って初めて機能します。片方だけだと戻り値は無視され、バッチ全体が再試行されます。3/31 の実験はここを実測する日です。",
+    r: "sqs_sns_integration.py" },
+  { id: "08-07", g: "08",
+    q: "`maxReceiveCount` を超えたメッセージはどうなるか。",
+    c: ["キューから削除される", "リドライブポリシーで指定した DLQ に移動する", "無期限に再試行され続ける", "Lambda の関数設定の DLQ に送られる"],
+    a: 1,
+    e: "SQS のリドライブポリシーで指定した DLQ に移ります。これは SQS の機能で、Lambda の関数設定にある `dead_letter_config`（非同期呼び出し用）とは別物です。似た名前で別の仕組みが2つある点が混乱のもとです。",
+    r: "sqs_sns_integration.py" },
+  { id: "08-08", g: "08",
+    q: "キューの可視性タイムアウトが関数のタイムアウトより短い場合、何が起きるか。",
+    c: ["メッセージが処理中に再び可視化され、別の実行が同じメッセージを受け取る", "関数が起動できずスロットリングされる", "メッセージが即座に DLQ へ移動する", "可視性タイムアウトが自動で延長される"],
+    a: 0,
+    e: "処理が終わる前にメッセージが戻ってきて、二重処理になります。可視性タイムアウトは関数タイムアウトより十分長く（目安として6倍）取ります。ここでも最終的な守りは冪等性です。",
+    r: "sqs_sns_integration.py" },
+
+  // ── 09 DynamoDB Streams ───────────────────────────────────
+  { id: "09-01", g: "09",
+    q: "`TypeDeserializer` が必要な理由はどれか。",
+    c: ["Streams のレコードが Base64 で届くため", "Streams のレコードが DynamoDB の型付き JSON（`{\"S\": \"abc\"}`）で届くため", "レコードが文字列として届くため `json.loads` の代わりに使う", "数値の精度を保つために Decimal へ変換する必要があるため"],
+    a: 1,
+    e: "Streams は `{\"S\": \"abc\"}` `{\"N\": \"1\"}` という型付きの形で届きます。`TypeDeserializer().deserialize()` で普通の Python の値に直します。`resource` API（`Table`）が自動でやってくれる変換を、Streams では自分で書く必要がある、という対比になります。",
+    r: "dynamodb_streams_trigger.py" },
+  { id: "09-02", g: "09",
+    q: "`record[\"eventName\"]` に入る値の組み合わせはどれか。",
+    c: ["`CREATE` / `UPDATE` / `DELETE`", "`INSERT` / `MODIFY` / `REMOVE`", "`PUT` / `POST` / `DELETE`", "`ObjectCreated` / `ObjectRemoved`"],
+    a: 1,
+    e: "DynamoDB Streams は `INSERT` / `MODIFY` / `REMOVE` の3つです。API 名（`put_item` / `update_item` / `delete_item`）とも HTTP メソッドとも違う語彙なので、素直に覚えるところです。",
+    r: "dynamodb_streams_trigger.py" },
+  { id: "09-03", g: "09",
+    q: "`stream_view_type = \"NEW_AND_OLD_IMAGES\"` を指定する意味はどれか。",
+    c: ["変更前と変更後の両方の項目がレコードに含まれる", "新しい項目だけが含まれ、古い項目は別ストリームに流れる", "キー属性だけが含まれる", "ストリームの保持期間が48時間に延びる"],
+    a: 0,
+    e: "`on_modify` が変更差分を計算できるのは、`OldImage` と `NewImage` の両方が届くからです。`KEYS_ONLY` を選ぶとキーしか来ないので、差分検知や監査ログの用途では使えません。",
+    r: "dynamodb_streams_trigger.py" },
+  { id: "09-04", g: "09",
+    q: "`eventName` が `INSERT` のレコードで、`OldImage` はどうなっているか。",
+    c: ["変更前の空の項目が入っている", "存在しない（`dynamodb.get(\"OldImage\", {})` が空 dict を返す）", "`NewImage` と同じ内容が入っている", "`None` が入っている"],
+    a: 1,
+    e: "新規作成なので変更前がありません。コードが `dynamodb.get(\"OldImage\", {})` と既定値を置いているのはこのためです。逆に `REMOVE` では `NewImage` がありません。",
+    r: "dynamodb_streams_trigger.py" },
+  { id: "09-05", g: "09",
+    q: "DynamoDB Streams の順序保証の単位はどれか。",
+    c: ["テーブル全体で厳密に順序が保証される", "シャード単位（同じパーティションキーの変更は同じシャードに入る）で保証される", "リージョン単位で保証される", "順序保証はなく、常にランダムに届く"],
+    a: 1,
+    e: "同じ項目に対する変更は順番どおりに届きますが、別のパーティションキー同士の前後関係は保証されません。「この項目の更新順」を前提にできて、「テーブル全体の更新順」は前提にできない、という線引きです。",
+    r: "dynamodb_streams_trigger.py" },
+  { id: "09-06", g: "09",
+    q: "あるバッチの処理が失敗し続けたとき、既定の設定では何が起きるか。",
+    c: ["そのバッチだけ捨てられ、次のレコードに進む", "そのシャードの処理が止まり、後続のレコードも進まなくなる", "テーブル全体の書き込みがブロックされる", "自動的に DLQ に送られて処理が続く"],
+    a: 1,
+    e: "順序を守るため、失敗したバッチを飛ばさずに再試行し続けます。結果としてそのシャードが詰まります。`maximum_retry_attempts` や `maximum_record_age_in_seconds` で見切りを付ける設定が要る理由がここにあります。",
+    r: "dynamodb_streams_trigger.py" },
+  { id: "09-07", g: "09",
+    q: "`bisect_batch_on_function_error` を有効にすると何が起きるか。",
+    c: ["失敗したバッチを半分に分割して再試行し、問題のレコードを絞り込む", "失敗したレコードだけを DLQ に送る", "バッチサイズを自動で最適化する", "失敗したバッチをスキップして次に進む"],
+    a: 0,
+    e: "二分探索の要領で分割していき、どのレコードが原因かを狭めます。1件の毒メッセージのせいでバッチ全体が止まる状況を緩和できます。SQS の `batchItemFailures` とは別のアプローチで同じ問題に対処しています。",
+    r: "dynamodb_streams_trigger.py" },
+  { id: "09-08", g: "09",
+    q: "`maximum_record_age_in_seconds` の役割はどれか。",
+    c: ["レコードをストリームに保持する期間を延長する", "一定時間より古くなったレコードを処理対象から外す", "バッチが集まるまでの待ち時間を指定する", "関数のタイムアウトを上書きする"],
+    a: 1,
+    e: "古すぎるレコードを諦めて先へ進むための設定です。`maximum_retry_attempts` と合わせて、詰まったシャードを自動的に解放します。捨てたレコードを拾いたい場合は、あわせて障害時の送信先（`destination_config`）を設定します。",
+    r: "dynamodb_streams_trigger.py" },
+
+  // ── 10 エラー設計・DLQ・冪等性 ───────────────────────────
+  { id: "10-01", g: "10",
+    q: "`RetryableError` と `NonRetryableError` を分けて定義している理由はどれか。",
+    c: ["Lambda が例外クラス名を見て再試行の要否を判断するため", "Lambda は例外を投げたかどうかしか見ないので、再試行の要否はコード側で表現するしかないため", "CloudWatch のメトリクスがクラス名別に分かれるため", "boto3 が例外クラスに応じて自動リトライするため"],
+    a: 1,
+    e: "Lambda 側に「このエラーは再試行しても無駄」と伝える仕組みはありません。だからコードの側で分類し、再試行させたいものだけ `raise` する、という設計になります。",
+    r: "error_handling_dlq.py" },
+  { id: "10-02", g: "10",
+    q: "`NonRetryableError` を捕まえたとき、このコードがしていることはどれか。",
+    c: ["DLQ に送ってから例外を再送出する", "DLQ に送り、400 を返して正常終了する", "何もせずに例外をそのまま上に投げる", "5秒待ってから再度 `process` を呼ぶ"],
+    a: 1,
+    e: "`send_to_dlq` したあと `return` しています。例外を投げないので Lambda の実行は成功扱いになり、非同期呼び出しでも再試行されません。「再試行しても無駄なものは自分で記録して終わる」という意思表示です。",
+    r: "error_handling_dlq.py" },
+  { id: "10-03", g: "10",
+    q: "`RetryableError` を捕まえたときに `raise` し直しているのはなぜか。",
+    c: ["ログに完全なスタックトレースを残すため", "実行を失敗させて、Lambda 側の再試行に委ねるため", "呼び出し元に 500 を返すため", "DLQ への送信をトリガするため"],
+    a: 1,
+    e: "一時的な障害は時間をおけば直る可能性があるので、失敗として終わらせて Lambda のリトライに任せます。逆に握りつぶすと「成功した」ことになってメッセージが失われます。",
+    r: "error_handling_dlq.py" },
+  { id: "10-04", g: "10",
+    q: "非同期（Event）呼び出しで関数が失敗したとき、既定のリトライはどうなるか。",
+    c: ["リトライされない", "2回（おおよそ1分後と2分後）", "3回（指数バックオフ）", "成功するまで無制限"],
+    a: 1,
+    e: "既定は最大2回の再試行で、間隔はおよそ1分・2分です。`maximum_retry_attempts` で変更できます。同期呼び出しでは自動リトライがないので、呼び出し方によって失敗の見え方がまったく変わります。",
+    r: "error_handling_dlq.py" },
+  { id: "10-05", g: "10",
+    q: "関数設定の `dead_letter_config` と、このコードの `send_to_dlq` の違いとして正しいものはどれか。",
+    c: ["前者は Lambda が再試行を使い切ったあと自動で送る。後者はアプリが明示的に送る", "前者は同期呼び出し専用、後者は非同期呼び出し専用", "両者は同じ仕組みで、書き方が違うだけ", "前者は SQS のみ、後者は SNS のみに送れる"],
+    a: 0,
+    e: "`dead_letter_config` は非同期呼び出しのリトライが尽きたときに Lambda が自動で送るもの。`send_to_dlq` は「この入力は処理できない」とアプリが判断して送るものです。同じ DLQ に2種類の経路で入るので、調査時に区別できるよう理由を添えて送っています。",
+    r: "error_handling_dlq.py" },
+  { id: "10-06", g: "10",
+    q: "冪等キーを `json.dumps(payload, sort_keys=True)` のハッシュで作っている。`sort_keys=True` を外すと何が起きるか。",
+    c: ["ハッシュ計算がエラーになる", "同じ内容でもキーの並び順が違うと別のハッシュになり、重複を検知できなくなる", "ハッシュが常に同じ値になる", "日本語を含む payload が扱えなくなる"],
+    a: 1,
+    e: "dict の並び順は入力の作られ方で変わります。並びを固定しないと「同じ内容の再送」を同一と判定できません。実務では payload 全体ではなく、送信側が発番した ID を冪等キーにするほうが確実です。",
+    r: "error_handling_dlq.py" },
+  { id: "10-07", g: "10",
+    q: "Lambda Destinations（`OnSuccess` / `OnFailure`）が DLQ より優れている点はどれか。",
+    c: ["成功時にも送信先を指定でき、呼び出しの入力と結果の両方が記録される", "同期呼び出しでも使える", "送信先を SQS だけに限定できる", "リトライ回数を無制限にできる"],
+    a: 0,
+    e: "DLQ は失敗したイベント本体しか運びませんが、Destinations は成功・失敗の両方を扱え、レスポンスやエラー内容を含んだコンテキストが送られます。後から追跡する材料が多いぶん、新規の設計では Destinations が第一候補になります。",
+    r: "error_handling_dlq.py" },
+  { id: "10-08", g: "10",
+    q: "最後の `except Exception` では DLQ に送ったうえで `raise` している。この意図はどれか。",
+    c: ["想定外のエラーは記録も残しつつ、実行としても失敗させて再試行とメトリクスに乗せるため", "DLQ への送信が失敗したときに備えるため", "`NonRetryableError` と同じ扱いにするため", "スタックトレースをレスポンスに含めるため"],
+    a: 0,
+    e: "分類できなかったエラーは、握りつぶすと Errors メトリクスにも出ません。記録を残したうえで失敗させ、リトライの機会も残す、という二段構えです。分類済みの `NonRetryableError` だけが `raise` しない扱いになっています。",
+    r: "error_handling_dlq.py" },
+  { id: "10-09", g: "10",
+    q: "バリデーション失敗をリトライしても意味がないのはなぜか。",
+    c: ["Lambda がバリデーションエラーを検知して再試行を止めるため", "入力が変わらない以上、何度実行しても同じ結果になるため", "リトライのたびに冪等キーが変わってしまうため", "API Gateway が先にタイムアウトするため"],
+    a: 1,
+    e: "再試行が意味を持つのは「時間をおけば状況が変わる」エラーだけです。入力そのものが不正なら、何度やっても同じです。無駄なリトライは下流に負荷をかけるだけなので、早めに DLQ へ落とします。",
+    r: "error_handling_dlq.py" },
+
+  // ── 11 統合：API GW → DynamoDB → SES ─────────────────────
+  { id: "11-01", g: "11",
+    q: "handler.py にビジネスロジックを書かず db.py / mailer.py に分けている利点として最も本質的なものはどれか。",
+    c: ["デプロイパッケージのサイズが小さくなる", "イベント形式に依存しない部分を、Lambda の外でもテストできる形で切り出せる", "同時実行数の上限が緩和される", "コールドスタートが速くなる"],
+    a: 1,
+    e: "`db.put_item` や `mailer.send_notification` は `event` の形を知りません。だから API Gateway から SQS へ載せ替えても、書き換えるのは handler.py だけで済みます。テストも handler を経由せずに書けます。",
+    r: "api_gateway_dynamodb_ses_integration/handler.py" },
+  { id: "11-02", g: "11",
+    q: "`db.py` の `query_items` が使っている `Key(partition_key).eq(value)` と `scan` の違いはどれか。",
+    c: ["query はキー条件に合う範囲だけを読む。scan は全件読んでから絞る", "query は強整合性読み取り、scan は結果整合性読み取りになる", "query は最大1MB、scan は無制限に読める", "query は resource API 専用、scan は client API 専用"],
+    a: 0,
+    e: "読む量が違うので、コストもレイテンシも桁で変わります。`eventbridge_scheduled_job.py` の `scan` + `FilterExpression` と並べて見ると、キー設計で query に寄せられるかどうかが効いてくるのが分かります。",
+    r: "api_gateway_dynamodb_ses_integration/db.py" },
+  { id: "11-03", g: "11",
+    q: "`boto3.resource(\"dynamodb\").Table(...)` と `boto3.client(\"dynamodb\")` の違いとして正しいものはどれか。",
+    c: ["resource は型変換を自動で行い、client は型付き JSON をそのまま扱う", "resource は非同期、client は同期で動作する", "resource は読み取り専用、client は読み書きができる", "resource は Streams を扱えるが client は扱えない"],
+    a: 0,
+    e: "resource なら `{\"id\": \"abc\", \"price\": Decimal(\"1000\")}` のように書けますが、client では `{\"id\": {\"S\": \"abc\"}, \"price\": {\"N\": \"1000\"}}` になります。`dynamodb_streams_trigger.py` で `TypeDeserializer` が要るのは、Streams が client 側の形で届くからです。",
+    r: "api_gateway_dynamodb_ses_integration/db.py" },
+  { id: "11-04", g: "11",
+    q: "`json.dumps(body, ensure_ascii=False, default=str)` の `default=str` が必要になる典型的な理由はどれか。",
+    c: ["日本語を含む文字列を扱うため", "DynamoDB から返る `Decimal` が JSON に変換できないため", "`uuid.UUID` オブジェクトをそのまま返しているため", "レスポンスサイズの上限を回避するため"],
+    a: 1,
+    e: "resource API は数値を `Decimal` で返しますが、`json.dumps` は `Decimal` を扱えず `TypeError` になります。`default=str` は保険で、精度が要るなら `float` ではなく文字列のまま返すか、専用のエンコーダを書きます。",
+    r: "api_gateway_dynamodb_ses_integration/handler.py" },
+  { id: "11-05", g: "11",
+    q: "`handle_post` の処理順序として正しいものはどれか。",
+    c: ["SES 送信 → DynamoDB 登録 → レスポンス", "DynamoDB 登録 → SES 送信 → レスポンス", "DynamoDB 登録と SES 送信を並列実行 → レスポンス", "SES 送信のみ行い、DynamoDB へは非同期で書く"],
+    a: 1,
+    e: "`db.put_item(item)` のあとに `mailer.send_notification(...)` です。この順序だと、SES が失敗したときには DynamoDB には既に書かれている状態になります。4/7 で実際にこの状態を作ります。",
+    r: "api_gateway_dynamodb_ses_integration/handler.py" },
+  { id: "11-06", g: "11",
+    q: "DynamoDB 登録は成功、SES 送信は失敗という状態でリクエストをリトライすると、何が起きるか。",
+    c: ["どちらもやり直されるので整合する", "DynamoDB は新しい ID で二重登録され、メールも改めて送られる", "DynamoDB は上書きされ、メールだけが二重に送られる", "SES だけがリトライされ、DynamoDB は変更されない"],
+    a: 1,
+    e: "`id` は `uuid.uuid4()` で毎回新しく振られるので、同じ内容でも別の項目として増えます。冪等性を持たせるなら、クライアントが発番した ID を使い、`ConditionExpression` で二重登録を防ぐ形にします。",
+    r: "api_gateway_dynamodb_ses_integration/handler.py" },
+  { id: "11-07", g: "11",
+    q: "「DynamoDB は成功、SES は失敗」を安全に扱う方向として、この教材の範囲で最も素直なものはどれか。",
+    c: ["SES 送信を先に行い、成功したら DynamoDB に書く", "登録と通知を分離し、登録後にキューへ流して通知は別の Lambda が担当する", "SES 送信を `try/except` で握りつぶして常に 201 を返す", "DynamoDB のトランザクション API で SES 送信を含める"],
+    a: 1,
+    e: "登録と通知は本来ひとつの原子操作にできません。登録を確定させ、通知は別経路（SQS や Streams、Step Functions）に逃がすと、通知側だけをリトライできます。握りつぶす案は失敗が見えなくなるので最悪の選択です。",
+    r: "api_gateway_dynamodb_ses_integration/handler.py" },
+  { id: "11-08", g: "11",
+    q: "`mailer.send_notification` に `body_html` を渡したときの挙動はどれか。",
+    c: ["テキスト本文が無視され HTML だけが送られる", "`Body` に `Text` と `Html` の両方が入り、マルチパートで送られる", "HTML がエスケープされてテキストとして送られる", "引数が無視される"],
+    a: 1,
+    e: "`message_body` に `Html` を足しているので、テキストと HTML の両方を持つメールになります。受信側のクライアントが対応していればHTML、そうでなければテキストが表示されます。",
+    r: "api_gateway_dynamodb_ses_integration/mailer.py" },
+  { id: "11-09", g: "11",
+    q: "`item = {\"id\": str(uuid.uuid4()), **body}` において、リクエストの body に `id` が含まれていた場合どうなるか。",
+    c: ["`uuid.uuid4()` の値が優先される", "body 側の `id` が上書きして勝つ", "キーが重複して `TypeError` になる", "`id` が list になる"],
+    a: 1,
+    e: "後から展開される `**body` が勝ちます。つまりクライアントが `id` を送ると任意の ID で登録でき、既存の項目を上書きすることもできます。`{**body, \"id\": ...}` の順にするか、`id` を明示的に除く必要があります。",
+    r: "api_gateway_dynamodb_ses_integration/handler.py" },
+
+  // ── 12 VPC・RDS 接続 ─────────────────────────────────────
+  { id: "12-01", g: "12",
+    q: "`_connection` をモジュールスコープのグローバル変数として持っている理由はどれか。",
+    c: ["同じ実行環境が再利用される間、DB 接続を張り直さずに済むため", "同時実行された呼び出しの間で接続を共有するため", "接続情報を暗号化して保持するため", "RDS Proxy を使うために必須の書き方であるため"],
+    a: 0,
+    e: "接続確立には時間がかかるので、実行環境の再利用に乗せて使い回します。`secrets_manager_ssm.py` のキャッシュとまったく同じ考え方です。ただし共有されるのは同一実行環境の中だけで、同時実行ぶんの接続は別々に張られます。",
+    r: "vpc_rds_connection.py" },
+  { id: "12-02", g: "12",
+    q: "`_connection.ping(reconnect=True)` を挟んでいる理由はどれか。",
+    c: ["接続数を DB 側に通知するため", "アイドル中に切れた接続を検知し、必要なら張り直すため", "クエリのタイムアウトを延長するため", "接続をプールに返却するため"],
+    a: 1,
+    e: "実行環境は生きていても、DB 側やネットワーク機器が先にアイドル接続を切ることがあります。使う前に生存確認をしないと、久しぶりの呼び出しだけが失敗します。失敗したら `_connection = None` に戻して作り直す作りになっています。",
+    r: "vpc_rds_connection.py" },
+  { id: "12-03", g: "12",
+    q: "VPC に接続した Lambda の ENI について正しいものはどれか。",
+    c: ["同時実行数と同じ数の ENI が作られる", "サブネットとセキュリティグループの組み合わせごとに共有され、同時実行数ぶんは作られない", "呼び出しのたびに作成・削除される", "VPC Lambda では ENI は使われない"],
+    a: 1,
+    e: "現在は共有 ENI（Hyperplane ENI）方式で、サブネット×セキュリティグループの組み合わせ単位になります。「同時実行数ぶん ENI を食う」というのは古い挙動です。ただし初回作成には時間がかかるので、設定変更直後の最初の呼び出しは遅くなります。",
+    r: "vpc_rds_connection.py" },
+  { id: "12-04", g: "12",
+    q: "VPC 内に置いた Lambda から Secrets Manager に到達させる方法として、この教材が採る手段はどれか。",
+    c: ["NAT Gateway を作ってインターネット経由で到達させる", "Secrets Manager 用のインタフェース型 VPC エンドポイントを作る", "パブリックサブネットに Lambda を配置する", "シークレットを環境変数に直接書く"],
+    a: 1,
+    e: "インタフェース型エンドポイント（PrivateLink）を置けば、経路を VPC 内に閉じたまま到達できます。Lambda をパブリックサブネットに置いても外には出られない（パブリック IP が付かない）ので、3番目は誤りです。",
+    r: "vpc_rds_connection.py" },
+  { id: "12-05", g: "12",
+    q: "NAT Gateway ではなく VPC エンドポイントを選ぶ主な理由はどれか。",
+    c: ["NAT Gateway は時間課金に加えてデータ処理料金がかかり、経路も外に出るため", "NAT Gateway は Lambda から利用できないため", "VPC エンドポイントの方が帯域が広いため", "NAT Gateway は Secrets Manager に対応していないため"],
+    a: 0,
+    e: "NAT Gateway は常時課金＋転送量課金で、学習環境では効いてきます（2月に「想定外の課金原因」として挙げたのもこれです）。特定サービスに到達したいだけならエンドポイントのほうが安く、経路も閉じられます。",
+    r: "vpc_rds_connection.py" },
+  { id: "12-06", g: "12",
+    q: "Lambda から RDS を使うときに RDS Proxy が必要になる理由はどれか。",
+    c: ["Lambda から RDS へは直接接続できない仕様であるため", "同時実行数ぶんの接続が DB に殺到し、`max_connections` に当たるため", "Lambda が接続の暗号化に対応していないため", "VPC エンドポイントが RDS に対応していないため"],
+    a: 1,
+    e: "実行環境ごとに接続を持つので、同時実行数がそのまま接続数になります。1月の FastAPI（1/27 の `pool_sizing` 検算）や boto3 期間の検算とまったく同じ構図で、Proxy はその接続をプールして DB 側の本数を抑えます。",
+    r: "vpc_rds_connection.py" },
+  { id: "12-07", g: "12",
+    q: "`import pymysql` が `ModuleNotFoundError` になる理由と対処はどれか。",
+    c: ["ランタイムに同梱されていないため、Layer を作るか依存を含めた zip を作る", "VPC 内からは PyPI に到達できないため、NAT Gateway を作る", "実行ロールに権限がないため、IAM ポリシーを足す", "Python のバージョンが古いため、ランタイムを上げる"],
+    a: 0,
+    e: "Lambda に入っているのは boto3 だけです。`pymysql` はデプロイ時に持ち込む必要があります。Layer に切り出しておくと、関数のデプロイパッケージが軽いまま使い回せます。",
+    r: "vpc_rds_connection.py" },
+
+  // ── 13 Step Functions ────────────────────────────────────
+  { id: "13-01", g: "13",
+    q: "`lambda_handler` が `event.get(\"taskToken\")` の有無で分岐している理由はどれか。",
+    c: ["ステートマシンの実行 ID を取得するため", "waitForTaskToken パターンで呼ばれたのか、通常の同期タスクで呼ばれたのかを判別するため", "リトライ回数を数えるため", "呼び出し元が Step Functions かどうかを確認するため"],
+    a: 1,
+    e: "`waitForTaskToken` を指定したステートは、入力に `taskToken` を混ぜて Lambda を呼び、そのまま待機に入ります。通常のタスクではトークンが来ません。同じ関数で両方を受けるための判定です。",
+    r: "step_functions_trigger.py" },
+  { id: "13-02", g: "13",
+    q: "通常の同期タスクとして呼ばれたときの戻り値は、どう扱われるか。",
+    c: ["ログに出るだけで使われない", "次のステートへの入力になる", "ステートマシンの最終出力としてのみ使われる", "`ResultPath` を指定しないと破棄される"],
+    a: 1,
+    e: "`process_task` の戻り値がそのまま次のステートに渡ります。ステートを直列に繋いだとき、前段の出力の形が後段の前提になるので、戻り値の構造はインタフェースとして設計する必要があります。",
+    r: "step_functions_trigger.py" },
+  { id: "13-03", g: "13",
+    q: "`send_task_success` / `send_task_failure` の役割はどれか。",
+    c: ["待機しているステートマシンを再開させる", "Lambda の実行結果を CloudWatch に記録する", "ステートマシンを新規に起動する", "タスクのリトライ回数をリセットする"],
+    a: 0,
+    e: "`waitForTaskToken` のステートは、トークン付きで呼び出したあと止まったままになります。処理が終わったら、誰かがトークンを添えて成功か失敗かを通知しないと、ステートマシンはタイムアウトまで待ち続けます。",
+    r: "step_functions_trigger.py" },
+  { id: "13-04", g: "13",
+    q: "Lambda の15分という実行時間の上限を、Step Functions がどう回避しているか。",
+    c: ["Lambda のタイムアウトを内部的に延長している", "待つのはステートマシン側で、Lambda はトークンを受け取って即座に終了できる", "処理を複数の Lambda に自動分割している", "Step Functions が Lambda を15分ごとに再起動している"],
+    a: 1,
+    e: "`waitForTaskToken` では、Lambda は「受け付けた」ことだけを伝えて終わり、待機はステートマシンが担います。人手の承認や数時間かかる外部処理を、Lambda を走らせ続けずに待てるのが利点です。",
+    r: "step_functions_trigger.py" },
+  { id: "13-05", g: "13",
+    q: "タスクのリトライやエラー分岐を書く場所として、Step Functions を使う場合に適切なものはどれか。",
+    c: ["各 Lambda のコード内に `try/except` とループで実装する", "ステートマシン定義の `Retry` / `Catch` に宣言的に書く", "API Gateway の設定に書く", "EventBridge のルールに書く"],
+    a: 1,
+    e: "リトライ間隔・回数・バックオフ係数・分岐先をステートマシン定義に書けるので、コードから制御構造を追い出せます。`error_handling_dlq.py` で手書きしていた分類とリトライ制御が、そのまま宣言になるイメージです。",
+    r: "step_functions_trigger.py" },
+  { id: "13-06", g: "13",
+    q: "`handle_callback` が例外を捕まえて `send_task_failure` を呼んだとき、この Lambda の実行自体はどう記録されるか。",
+    c: ["エラーとして記録され、Errors メトリクスが増える", "正常終了として記録される（例外を再送出していないため）", "タイムアウトとして記録される", "Step Functions 側の失敗に引きずられて失敗扱いになる"],
+    a: 1,
+    e: "例外を握ってから `{\"status\": \"callback_sent\"}` を返しているので、Lambda としては成功です。ステートマシンは失敗するのに Lambda のメトリクスは正常、という食い違いが起きるので、監視をどちら側で張るかを決めておく必要があります。",
+    r: "step_functions_trigger.py" },
+  { id: "13-07", g: "13",
+    q: "`waitForTaskToken` のステートで `send_task_success` も `send_task_failure` も呼ばれなかった場合、どうなるか。",
+    c: ["1分後に自動で次のステートへ進む", "ステートマシンがタイムアウトするまで待ち続ける", "Lambda が自動的に再実行される", "即座に実行が失敗する"],
+    a: 1,
+    e: "トークンを握ったまま誰も応答しないと、そのステートは止まったままです。ステート側に `TimeoutSeconds`（または `HeartbeatSeconds`）を必ず設定しておかないと、最大1年間待ち続けることになります。",
+    r: "step_functions_trigger.py" },
+
+  // ── 14 Powertools と可観測性 ─────────────────────────────
+  { id: "14-01", g: "14",
+    q: "`@logger.inject_lambda_context` を付けると、ログに自動で追加される情報はどれか。",
+    c: ["リクエストIDや関数名、コールドスタートかどうかといった実行コンテキスト", "呼び出し元の IP アドレスとユーザーエージェント", "実行にかかった課金時間とメモリ使用量", "X-Ray のトレースのサービスマップ"],
+    a: 0,
+    e: "`function_request_id` や `cold_start` といったフィールドが全ログ行に付きます。1月の FastAPI で `request_id` をミドルウェアで伝搬させたのと同じ発想を、デコレータ1行で済ませている形です。",
+    r: "powertools_middleware.py" },
+  { id: "14-02", g: "14",
+    q: "`@logger.inject_lambda_context(log_event=True)` を本番で使うときに注意すべき点はどれか。",
+    c: ["ログ出力が非同期になり、順序が保証されなくなる", "イベント全体がログに出るため、機微情報がそのまま CloudWatch Logs に残る", "コールドスタート情報が出力されなくなる", "構造化ログが無効になる"],
+    a: 1,
+    e: "`log_event=True` は受け取ったイベントを丸ごと出します。デバッグには便利ですが、API のリクエストボディや Cognito のユーザー属性がそのまま残ります。1月の `log_masking` で扱ったマスキングの論点がここにもかかってきます。",
+    r: "powertools_middleware.py" },
+  { id: "14-03", g: "14",
+    q: "Powertools の `Metrics` がメトリクスを送る仕組みはどれか。",
+    c: ["ハンドラ終了時に `put_metric_data` API を同期で呼ぶ", "EMF 形式の JSON を標準出力に書き、CloudWatch がログからメトリクスを抽出する", "X-Ray のトレースにメトリクスを埋め込む", "CloudWatch エージェントが関数内から送信する"],
+    a: 1,
+    e: "EMF（埋め込みメトリクス形式）なので、API 呼び出しのレイテンシも権限も増えません。1月の FastAPI で「アプリから CloudWatch へ直接送る方式が増やす failure mode」を挙げましたが、EMF はその問題を避ける作りになっています。",
+    r: "powertools_middleware.py" },
+  { id: "14-04", g: "14",
+    q: "`@event_source(data_class=APIGatewayProxyEvent)` を付けると何が変わるか。",
+    c: ["ハンドラの `event` が型付きオブジェクトになり、`event.path_parameters` のように属性でアクセスできる", "イベントのバリデーションが行われ、不正なら自動で 400 を返す", "イベントが JSON スキーマで検証される", "イベントソースごとに別のハンドラへ自動で振り分けられる"],
+    a: 0,
+    e: "生の dict を触らなくなるので、キー名の打ち間違いやペイロード形式の違いを吸収しやすくなります。バリデーションは別のユーティリティ（`@validator` など）の担当で、このデコレータの役目ではありません。",
+    r: "powertools_middleware.py" },
+  { id: "14-05", g: "14",
+    q: "`@tracer.capture_method` を `fetch_data` に付けたときの効果はどれか。",
+    c: ["このメソッドの実行時間だけをメトリクスとして送る", "X-Ray のトレースにこのメソッドのサブセグメントが作られる", "このメソッドの戻り値をキャッシュする", "このメソッドの例外を自動で握りつぶす"],
+    a: 1,
+    e: "ハンドラ全体のセグメントの中に、このメソッドぶんのサブセグメントがぶら下がります。どこで時間を使っているかがトレース上で分解できるようになります。boto3 の呼び出しは Tracer がパッチして自動で記録されます。",
+    r: "powertools_middleware.py" },
+  { id: "14-06", g: "14",
+    q: "`put_annotation` と `put_metadata` の違いはどれか。",
+    c: ["annotation は検索・フィルタの対象になり、metadata はならない", "annotation は文字列専用、metadata は数値専用", "annotation はログに出力され、metadata はトレースに出力される", "両者は同じで、名前が違うだけ"],
+    a: 0,
+    e: "annotation はインデックスされるのでトレースの絞り込みに使えます（件数に上限あり）。metadata は任意の構造を丸ごと添付できますが検索できません。「あとで絞り込みたいキー」だけを annotation に出す、という使い分けです。",
+    r: "powertools_middleware.py" },
+  { id: "14-07", g: "14",
+    q: "このハンドラは例外を捕まえて 500 を返している。監視上の帰結として正しいものはどれか。",
+    c: ["Lambda の Errors メトリクスが増えるので、標準の監視で気づける", "Lambda としては成功扱いになるので、`ItemError` のようなカスタムメトリクスを見ないと失敗に気づけない", "X-Ray のトレースに自動でエラーが記録されるので追跡できる", "API Gateway が 5xx として記録するため Lambda 側の監視は不要"],
+    a: 1,
+    e: "例外を握って正常な戻り値を返すと、Lambda のメトリクス上は成功です。コードが `metrics.add_metric(name=\"ItemError\", ...)` を足しているのはそのためで、ここを見るアラームを別途作らないと障害が見えません。1月の FastAPI で扱った「本来 4xx のものを 500 で返すと SLO が壊れる」の裏返しの論点です。",
+    r: "powertools_middleware.py" }
+];
+
+
+/* ── 保存 ─────────────────────────── */
+const KEY = "sre-lambda-drill-v1";
+const RANKS = ["ミス","ジャブ","ヒット","コンボ"];
+let state = load();
+
+function blank(){ return { version:1, updatedAt:null, q:{}, totals:{answered:0,correct:0}, sessions:[] }; }
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(!raw) return blank();
+    const o = JSON.parse(raw);
+    if(!o || typeof o!=="object" || !o.q) return blank();
+    return Object.assign(blank(), o);
+  }catch(e){ return blank(); }
+}
+function save(){
+  state.updatedAt = new Date().toISOString();
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch(e){ console.warn("保存に失敗しました", e); }
+}
+function rec(id){
+  if(!state.q[id]) state.q[id] = { s:0, n:0, w:0 };
+  return state.q[id];
+}
+function streak(id){ return state.q[id] ? state.q[id].s : 0; }
+function rankIdx(id){ const s = streak(id); return s>=3 ? 3 : s; }
+
+/* ── 表示ヘルパー ─────────────────── */
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function fmt(s){ return esc(s).replace(/`([^`]+)`/g, (_,m)=>"<code>"+m+"</code>").replace(/\n/g,"<br>"); }
+function shuffle(a){ const r=a.slice(); for(let i=r.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [r[i],r[j]]=[r[j],r[i]]; } return r; }
+function byGenre(g){ return QUESTIONS.filter(q => q.g === g); }
+function scopeQs(scope){ return scope === "*" ? QUESTIONS.slice() : byGenre(scope); }
+function scopeName(scope){
+  if(scope === "*") return "全ジャンル";
+  const g = GENRES.find(x => x.id === scope);
+  return g ? g.id + " " + g.name : scope;
+}
+function dist(list){
+  const d=[0,0,0,0];
+  list.forEach(q => d[rankIdx(q.id)]++);
+  return d;
+}
+function barHTML(d, total){
+  const order=[["b-combo",d[3]],["b-hit",d[2]],["b-jab",d[1]],["b-miss",d[0]]];
+  return order.map(([cls,n]) => '<i class="'+cls+'" style="width:'+(total? n/total*100 : 0)+'%"></i>').join("");
+}
+
+/* ── 画面切替 ─────────────────────── */
+const V = { home:el("home"), quiz:el("quiz"), result:el("result"), stats:el("stats") };
+function el(id){ return document.getElementById(id); }
+function show(name){
+  Object.keys(V).forEach(k => V[k].classList.toggle("hide", k !== name));
+  window.scrollTo(0,0);
+}
+
+/* ── ホーム ───────────────────────── */
+function renderHome(){
+  const all = QUESTIONS, ad = dist(all);
+  el("allMeta").textContent = GENRES.length + "ジャンル・" + all.length + "問　コンボ " + ad[3] + " / " + all.length;
+  el("allBar").innerHTML = barHTML(ad, all.length);
+
+  el("glist").innerHTML = GENRES.map(g => {
+    const list = byGenre(g.id), d = dist(list), done = d[3] === list.length && list.length > 0;
+    return '<div class="grow'+(done?" done":"")+'">'
+      + '<div class="gmain">'
+      +   '<div class="gname">'+esc(g.id+". "+g.name)+'</div>'
+      +   '<div class="gmeta">'+esc(g.phase+"｜"+g.day+"｜"+g.file)+'</div>'
+      +   '<div class="bar">'+barHTML(d, list.length)+'</div>'
+      + '</div>'
+      + '<div class="gacts">'
+      +   '<span class="count">コンボ <b>'+d[3]+'</b> / '+list.length+'</span>'
+      +   '<button class="btn" data-scope="'+g.id+'" data-mode="all">全て</button>'
+      +   '<button class="btn primary" data-scope="'+g.id+'" data-mode="noncombo">コンボを除く</button>'
+      + '</div></div>';
+  }).join("");
+
+  const t = state.totals;
+  el("subhead").textContent = "14ジャンル・" + QUESTIONS.length + "問　累計 " + t.answered + "回答／正答率 "
+    + (t.answered ? Math.round(t.correct / t.answered * 100) : 0) + "%";
+}
+
+/* ── セッション ───────────────────── */
+let S = null;
+
+function startSession(scope, mode){
+  const pool = scopeQs(scope);
+  let queue;
+  if(mode === "all"){
+    queue = shuffle(pool).map(q => q.id);
+  }else{
+    queue = shuffle(pool.filter(q => rankIdx(q.id) < 3)).map(q => q.id);
+    if(queue.length === 0){
+      S = { scope, mode, asked:0, correct:0 };
+      finishSession(true);
+      return;
+    }
+  }
+  S = { scope, mode, queue, asked:0, correct:0, startedAt:new Date().toISOString(), answered:false, cur:null };
+  show("quiz");
+  nextQuestion();
+}
+
+function nextQuestion(){
+  if(S.mode === "noncombo"){
+    // コンボ済みになったものは取り除く
+    S.queue = S.queue.filter(id => rankIdx(id) < 3);
+  }
+  if(S.queue.length === 0){ finishSession(S.mode === "noncombo"); return; }
+
+  const id = S.queue.shift();
+  const q = QUESTIONS.find(x => x.id === id);
+  const order = shuffle(q.c.map((text, i) => ({ text, i })));
+  S.cur = { q, order };
+  S.answered = false;
+
+  el("qid").textContent = q.id + "　" + scopeName(q.g).replace(/^\d\d /, "");
+  el("qprog").textContent = S.mode === "noncombo"
+    ? "残り " + (S.queue.length + 1) + " 問（未コンボ）"
+    : (S.asked + 1) + " / " + (S.asked + 1 + S.queue.length) + " 問";
+  el("qtext").innerHTML = fmt(q.q);
+  el("choices").innerHTML = order.map((o, n) =>
+    '<button class="ch" data-n="'+n+'"><span class="k">'+(n+1)+'</span><span>'+fmt(o.text)+'</span></button>'
+  ).join("");
+  el("verdict").classList.add("hide");
+  el("nextBtn").classList.add("hide");
+  el("kbdHint").classList.remove("hide");
+  [...document.querySelectorAll(".ch")].forEach(b => b.addEventListener("click", () => answer(+b.dataset.n)));
+}
+
+function answer(n){
+  if(S.answered) return;
+  S.answered = true;
+  const { q, order } = S.cur;
+  const correct = order[n].i === q.a;
+  const r = rec(q.id);
+
+  r.n++;
+  if(correct){ r.s++; } else { r.s = 0; r.w++; }
+  S.asked++; if(correct) S.correct++;
+  state.totals.answered++; if(correct) state.totals.correct++;
+  if(S.mode === "noncombo" && r.s < 3) S.queue.push(q.id);
+  save();
+
+  const btns = [...document.querySelectorAll(".ch")];
+  btns.forEach((b, i) => {
+    b.disabled = true;
+    if(order[i].i === q.a) b.classList.add(i === n ? "pick-ok" : "reveal");
+    else if(i === n) b.classList.add("pick-ng");
+  });
+
+  el("vtag").textContent = correct ? "正解" : "不正解";
+  el("vtag").className = "vtag " + (correct ? "ok" : "ng");
+  el("vrank").textContent = "この問題のランク：" + RANKS[rankIdx(q.id)];
+  el("vexp").innerHTML = fmt(q.e);
+  el("vref").innerHTML = "参照：" + fmt(q.r);
+
+  const s = Math.min(r.s, 3);
+  el("pips").innerHTML = [0,1,2].map(i =>
+    '<i class="'+(i < s ? (s >= 3 ? "full" : "on") : "")+'"></i>').join("");
+  el("pipstext").textContent = r.s >= 3 ? "コンボ達成" : (3 - r.s) + " 回連続で正解するとコンボ";
+
+  el("verdict").classList.remove("hide");
+  el("nextBtn").classList.remove("hide");
+  el("kbdHint").classList.add("hide");
+  el("nextBtn").focus();
+}
+
+function finishSession(complete){
+  const list = scopeQs(S.scope), d = dist(list);
+  if(S.startedAt){
+    state.sessions.unshift({
+      at:S.startedAt, scope:S.scope, mode:S.mode,
+      asked:S.asked, correct:S.correct, complete: !!complete
+    });
+    state.sessions = state.sessions.slice(0, 40);
+    save();
+  }
+  el("rTitle").textContent = complete
+    ? "コンプリート — " + scopeName(S.scope)
+    : "1周終了 — " + scopeName(S.scope);
+  const rate = S.asked ? Math.round(S.correct / S.asked * 100) : 0;
+  el("rBody").innerHTML = complete
+    ? fmt(scopeName(S.scope) + " の " + list.length + "問がすべてコンボになりました。\nこのセッション：" + S.asked + "問出題／正答 " + S.correct + "（" + rate + "%）")
+    : fmt("このセッション：" + S.asked + "問出題／正答 " + S.correct + "（" + rate + "%）\n現在のランク：ミス " + d[0] + "・ジャブ " + d[1] + "・ヒット " + d[2] + "・コンボ " + d[3]);
+  el("rAgain").textContent = complete ? "もう一度「全て」で回す" : "「コンボを除く」で潰す";
+  el("rAgain").dataset.mode = complete ? "all" : "noncombo";
+  el("rAgain").dataset.scope = S.scope;
+  show("result");
+}
+
+/* ── 学習成績 ─────────────────────── */
+function renderStats(){
+  let tot = [0,0,0,0], totW = 0, totN = 0;
+  el("statBody").innerHTML = GENRES.map(g => {
+    const list = byGenre(g.id), d = dist(list);
+    let w = 0, n = 0;
+    list.forEach(q => { const r = state.q[q.id]; if(r){ w += r.w; n += r.n; } });
+    tot = tot.map((v, i) => v + d[i]); totW += w; totN += n;
+    return "<tr><td>" + esc(g.id + ". " + g.name) + "</td><td>" + list.length + "</td>"
+      + "<td>" + d[0] + "</td><td>" + d[1] + "</td><td>" + d[2] + "</td><td>" + d[3] + "</td>"
+      + "<td>" + w + "</td><td>" + (n ? Math.round((n - w) / n * 100) + "%" : "—") + "</td></tr>";
+  }).join("");
+  el("statFoot").innerHTML = "<tr><td>合計</td><td>" + QUESTIONS.length + "</td>"
+    + "<td>" + tot[0] + "</td><td>" + tot[1] + "</td><td>" + tot[2] + "</td><td>" + tot[3] + "</td>"
+    + "<td>" + totW + "</td><td>" + (totN ? Math.round((totN - totW) / totN * 100) + "%" : "—") + "</td></tr>";
+
+  el("sessBody").innerHTML = state.sessions.length
+    ? state.sessions.slice(0, 20).map(s => {
+        const dt = new Date(s.at);
+        const label = dt.getFullYear() + "/" + (dt.getMonth() + 1) + "/" + dt.getDate() + " "
+          + String(dt.getHours()).padStart(2, "0") + ":" + String(dt.getMinutes()).padStart(2, "0");
+        return "<tr><td>" + label + "</td><td>" + esc(scopeName(s.scope)) + "（" + (s.mode === "all" ? "全て" : "コンボを除く") + "）</td>"
+          + "<td>" + s.asked + "</td><td>" + s.correct + "</td><td>" + (s.complete ? "コンプリート" : "—") + "</td></tr>";
+      }).join("")
+    : '<tr><td colspan="5" style="text-align:left;color:var(--muted)">まだ記録がありません。ジャンル一覧から始めてください。</td></tr>';
+}
+
+/* ── 書き出し・読み込み ───────────── */
+function exportJSON(){
+  const payload = { app:"【SRE】Lambda演習", exportedAt:new Date().toISOString(), data:state };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
+  const d = new Date(), p = n => String(n).padStart(2, "0");
+  const name = "lambda-drill-" + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate())
+    + "-" + p(d.getHours()) + p(d.getMinutes()) + ".json";
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function importJSON(file){
+  const fr = new FileReader();
+  fr.onload = () => {
+    try{
+      const o = JSON.parse(fr.result);
+      const d = o && o.data ? o.data : o;
+      if(!d || typeof d !== "object" || !d.q) throw new Error("形式が違います");
+      if(!confirm("読み込むと現在の履歴は置き換わります。続けますか。")) return;
+      state = Object.assign(blank(), d);
+      save(); renderHome(); renderStats();
+      alert("読み込みました。");
+    }catch(e){
+      alert("読み込めませんでした：" + e.message);
+    }
+  };
+  fr.readAsText(file);
+}
+
+/* ── イベント ─────────────────────── */
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-scope][data-mode]");
+  if(b){ startSession(b.dataset.scope, b.dataset.mode); }
+});
+el("navHome").addEventListener("click", () => { renderHome(); show("home"); });
+el("navStats").addEventListener("click", () => { renderStats(); show("stats"); });
+el("rHome").addEventListener("click", () => { renderHome(); show("home"); });
+el("rStats").addEventListener("click", () => { renderStats(); show("stats"); });
+el("nextBtn").addEventListener("click", nextQuestion);
+el("quitBtn").addEventListener("click", () => {
+  if(S && S.asked > 0) finishSession(false);
+  else { renderHome(); show("home"); }
+});
+el("expBtn").addEventListener("click", exportJSON);
+el("impBtn").addEventListener("click", () => el("impFile").click());
+el("impFile").addEventListener("change", e => { if(e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ""; });
+el("resetBtn").addEventListener("click", () => {
+  if(!confirm("すべての履歴を消します。書き出しは済んでいますか。")) return;
+  state = blank(); save(); renderHome(); renderStats();
+});
+document.addEventListener("keydown", e => {
+  if(V.quiz.classList.contains("hide")) return;
+  if(!S || !S.cur) return;
+  if(!S.answered && e.key >= "1" && e.key <= "4"){
+    const n = +e.key - 1;
+    if(n < S.cur.order.length){ e.preventDefault(); answer(n); }
+  }else if(S.answered && (e.key === "Enter" || e.key === " ")){
+    e.preventDefault(); nextQuestion();
+  }
+});
+
+renderHome();
+show("home");
+</script>
+</body>
+</html>

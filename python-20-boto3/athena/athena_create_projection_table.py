@@ -8,10 +8,35 @@ Glue Crawler や ADD PARTITION 不要で、追記され続けるログをその�
   - CREATE DATABASE / CREATE EXTERNAL TABLE も start_query_execution で流す
   - projection.* と storage.location.template を実 S3 パスに一致させる
   - DDL も SELECT と同じくポーリングで完了待ちする
+
+--------------------------------------------------------------------
+実行前に下の「設定」を terraform output の値に置き換えること:
+
+  terraform output -raw athena_alb_log_location    -> ALB_LOG_LOCATION
+  terraform output -raw athena_results_location    -> OUTPUT_LOCATION
+--------------------------------------------------------------------
 """
 import time
 import boto3
 from botocore.exceptions import ClientError
+
+# ====================== 設定 ======================
+REGION = "ap-northeast-1"
+DATABASE = "boto3_study"
+TABLE = "alb_logs"
+WORKGROUP = "primary"
+
+# terraform output -raw athena_alb_log_location
+# 例: s3://boto3-study-logs-123456789012/alb/AWSLogs/123456789012/elasticloadbalancing/ap-northeast-1/
+# 末尾のスラッシュは必須（storage.location.template で ${day} を直接つなげるため）
+ALB_LOG_LOCATION = "s3://REPLACE-ME/alb/AWSLogs/000000000000/elasticloadbalancing/ap-northeast-1/"
+
+# terraform output -raw athena_results_location
+OUTPUT_LOCATION = "s3://REPLACE-ME-athena/query-results/"
+
+# 射影の開始日。ログが無い日を含めても害はないが、狭いほど無駄スキャンが減る
+PROJECTION_RANGE_START = "2027/02/01"
+# ==================================================
 
 
 def execute_ddl(
@@ -50,10 +75,26 @@ def execute_ddl(
     return qid
 
 
-# ALB アクセスログ用テーブル DDL（day を date 型で射影する AWS 推奨形）
-# ※ SerDe の正規表現は長いため要点を抜粋。実運用では AWS 公式の最新版を使うこと。
-_ALB_TABLE_DDL = """
-CREATE EXTERNAL TABLE IF NOT EXISTS {database}.alb_logs (
+# ------------------------------------------------------------------
+# ALB アクセスログ用テーブル DDL
+#
+# AWS 公式（Athena ユーザーガイド「Create the table for ALB access logs
+# in Athena using partition projection」）のものをそのまま使う。
+#
+# 【重要】列と input.regex のキャプチャグループは必ず対応させること。
+#   RegexSerDe は「N 番目のグループ → N 番目の列」で機械的に割り当てるので、
+#   途中で1つでもズレると以降の列がすべて1つずつ後ろにずれ、型が合わない列
+#   （elb_status_code は int など）は NULL になる。「検索結果が NULL だらけ」
+#   の原因はほぼこれ。
+#   - 列: 34（client:port と target:port をそれぞれ ip / port の2列に分解、
+#          "request" を verb / url / proto の3列に分解）
+#   - グループ: 35。最後の ?( .*)? は列を持たない意図的な余り。
+#     ALB のログ形式に将来フィールドが追加されても壊れないようにするための
+#     もので、AWS も「常に残しておくこと」と明記している。
+#     末尾の余りグループは無視されるだけなので列ズレは起きない。
+# ------------------------------------------------------------------
+_ALB_TABLE_DDL = r"""
+CREATE EXTERNAL TABLE IF NOT EXISTS {database}.{table} (
   type string,
   time string,
   elb string,
@@ -82,15 +123,20 @@ CREATE EXTERNAL TABLE IF NOT EXISTS {database}.alb_logs (
   request_creation_time string,
   actions_executed string,
   redirect_url string,
-  error_reason string
+  lambda_error_reason string,
+  target_port_list string,
+  target_status_code_list string,
+  classification string,
+  classification_reason string,
+  conn_trace_id string
 )
 PARTITIONED BY (day string)
 ROW FORMAT SERDE 'org.apache.hadoop.hive.serde2.RegexSerDe'
 WITH SERDEPROPERTIES (
-  'input.regex' =
-  '([^ ]*) ([^ ]*) ([^ ]*) ([^ ]*):([0-9]*) ([^ ]*)[:-]([0-9]*) ([-.0-9]*) ([-.0-9]*) ([-.0-9]*) (|[-0-9]*) (-|[-0-9]*) ([-0-9]*) ([-0-9]*) \\"([^ ]*) ([^ ]*) (- |[^ ]*)\\" \\"([^\\"]*)\\" ([A-Z0-9-_]+) ([A-Za-z0-9.-]*) ([^ ]*) \\"([^\\"]*)\\" \\"([^\\"]*)\\" \\"([^\\"]*)\\" ([-.0-9]*) ([^ ]*) \\"([^\\"]*)\\" \\"([^\\"]*)\\".*'
+  'serialization.format' = '1',
+  'input.regex' = '([^ ]*) ([^ ]*) ([^ ]*) ([^ ]*):([0-9]*) ([^ ]*)[:-]([0-9]*) ([-.0-9]*) ([-.0-9]*) ([-.0-9]*) (|[-0-9]*) (-|[-0-9]*) ([-0-9]*) ([-0-9]*) \"([^ ]*) (.*) (- |[^ ]*)\" \"([^\"]*)\" ([A-Z0-9-_]+) ([A-Za-z0-9.-]*) ([^ ]*) \"([^\"]*)\" \"([^\"]*)\" \"([^\"]*)\" ([-.0-9]*) ([^ ]*) \"([^\"]*)\" \"([^\"]*)\" \"([^ ]*)\" \"([^\\s]+?)\" \"([^\\s]+)\" \"([^ ]*)\" \"([^ ]*)\" ?([^ ]*)? ?( .*)?'
 )
-LOCATION 's3://{bucket}/AWSLogs/{account_id}/elasticloadbalancing/{region}/'
+LOCATION '{location}'
 TBLPROPERTIES (
   'projection.enabled' = 'true',
   'projection.day.type' = 'date',
@@ -98,53 +144,52 @@ TBLPROPERTIES (
   'projection.day.format' = 'yyyy/MM/dd',
   'projection.day.interval' = '1',
   'projection.day.interval.unit' = 'DAYS',
-  'storage.location.template' =
-    's3://{bucket}/AWSLogs/{account_id}/elasticloadbalancing/{region}/${{day}}'
+  'storage.location.template' = '{location}${{day}}'
 )
 """
 
 
 def main() -> None:
-    region = "ap-northeast-1"
-    database = "log_analysis"
-    workgroup = "primary"
-    output_location = "s3://your-athena-results-bucket/query-results/"
+    if "REPLACE-ME" in ALB_LOG_LOCATION or "REPLACE-ME" in OUTPUT_LOCATION:
+        print("[ERROR] ALB_LOG_LOCATION / OUTPUT_LOCATION を terraform output の値に置き換えてください")
+        print("        terraform output -raw athena_alb_log_location")
+        print("        terraform output -raw athena_results_location")
+        return
 
-    # 実環境に合わせて置き換える
-    bucket = "your-alb-log-bucket"
-    account_id = "123456789012"
-    range_start = "2024/01/01"  # ログ蓄積開始日に合わせて絞ると無駄スキャンを防げる
+    if not ALB_LOG_LOCATION.endswith("/"):
+        print("[ERROR] ALB_LOG_LOCATION は必ず '/' で終わらせること")
+        return
 
-    client = boto3.client("athena", region_name=region)
+    client = boto3.client("athena", region_name=REGION)
 
     try:
         # 1) データベース作成（既存ならスキップされる）
         execute_ddl(
             client,
-            sql=f"CREATE DATABASE IF NOT EXISTS {database}",
+            sql=f"CREATE DATABASE IF NOT EXISTS {DATABASE}",
             database=None,
-            workgroup=workgroup,
-            output_location=output_location,
+            workgroup=WORKGROUP,
+            output_location=OUTPUT_LOCATION,
         )
-        print(f"[OK] database ready: {database}")
+        print(f"[OK] database ready: {DATABASE}")
 
         # 2) Partition Projection 付きテーブル作成
         ddl = _ALB_TABLE_DDL.format(
-            database=database,
-            bucket=bucket,
-            account_id=account_id,
-            region=region,
-            range_start=range_start,
+            database=DATABASE,
+            table=TABLE,
+            location=ALB_LOG_LOCATION,
+            range_start=PROJECTION_RANGE_START,
         )
         execute_ddl(
             client,
             sql=ddl,
-            database=database,
-            workgroup=workgroup,
-            output_location=output_location,
+            database=DATABASE,
+            workgroup=WORKGROUP,
+            output_location=OUTPUT_LOCATION,
         )
-        print("[OK] table ready: alb_logs（Partition Projection 有効）")
-        print("     → WHERE day='2026/07/18' でスキャン範囲を絞ってクエリ可能")
+        print(f"[OK] table ready: {DATABASE}.{TABLE}（Partition Projection 有効）")
+        print("     → WHERE day='2027/02/14' でスキャン範囲を絞ってクエリ可能")
+        print("        （ログがあるのは 2/1・2/11・2/14・2/23。2/28 当日の分は無い）")
 
     except (ClientError, RuntimeError, TimeoutError) as e:
         print(f"[ERROR] {e}")

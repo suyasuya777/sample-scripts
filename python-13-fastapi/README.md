@@ -1,15 +1,21 @@
-# FastAPI 学習サンプル集
+# FastAPI 実務スキルマップ（SRE 視点版）
+
+障害調査でアプリのコードを読んだときに「ここが原因だ」と言えるようになるための
+教材です。API の作り方ではなく、**動いている API が壊れたときに何を疑うか**を扱います。
+
+---
 
 ## 🗺 カテゴリ一覧
 
-| # | カテゴリ | このカテゴリで身につくこと |
+| # | カテゴリ | この章の問い |
 |---|---|---|
-| 01 | `request_response` | 入力の検証・ページング・レスポンス構造の設計。APIの「入口と出口」の型を固める。 |
-| 02 | `error_handling` | バリデーション失敗や異常系を統一フォーマットで返す。01 の裏返しとして学ぶ。 |
-| 03 | `auth_security` | APIキー認証・JWT・RBAC でエンドポイントを保護する。 |
-| 04 | `async_performance` | レスポンスをブロックしない非同期処理・外部API連携。 |
-| 05 | `middleware` | 全リクエストに横断適用するロギング・構造化ログ。 |
-| 06 | `deploy` | Docker・ヘルスチェック・CloudWatch など運用・デプロイ設計。 |
+| 01 | `lifecycle` | デプロイのたびに 502 が出るのはなぜか |
+| 02 | `outbound` | 呼び出し先が遅いとき、自分も道連れになる構造をどう断つか |
+| 03 | `observability` | 障害の最中に「どのリクエストが、どこで、どれだけ遅かったか」を特定できるか |
+| 04 | `failure` | 4xx と 5xx の切り分けが、そのまま可用性 SLI の分母と分子になる |
+| 05 | `async_pitfalls` | 「速くするため」に書いた非同期処理が、なぜ障害の原因になるのか |
+| 06 | `runtime` | イメージと起動構成が、ロールバックの速さと障害時の挙動を決める |
+| 07 | `integrated` | 01〜06 を1つのアプリに統合する（5日目の課題） |
 
 ---
 
@@ -17,102 +23,108 @@
 
 | カテゴリ | ファイル | 内容 |
 |---|---|---|
-| **01_request_response** | [`pagination/`](01_request_response/pagination/pagination.py) | ページネーション（offset/limit・カーソル方式） |
-| | [`response_model_filtering/`](01_request_response/response_model_filtering/response_model_filtering.py) | レスポンスフィールドの絞り込みと機密情報除外 |
-| | [`unified_response_format/`](01_request_response/unified_response_format/unified_response_format.py) | 統一レスポンスフォーマット（`Generic[T]`） |
-| | [`validation/`](01_request_response/validation/validation.py) | バリデーション（Field制約・カスタムバリデーター） |
-| **02_error_handling** | [`http_exception_usage/`](02_error_handling/http_exception_usage/http_exception_usage.py) | HTTPException とステータスコード定数 |
-| | [`validation_error_response_format/`](02_error_handling/validation_error_response_format/validation_error_response_format.py) | バリデーションエラーレスポンスの整形 |
-| **03_auth_security** | [`api_key_authentication/`](03_auth_security/api_key_authentication/api_key_authentication.py) | APIキー認証（ヘッダー・クエリ） |
-| | [`role_based_access_control/`](03_auth_security/role_based_access_control/role_based_access_control.py) | ロールベースアクセス制御（RBAC / JWT） |
-| **04_async_performance** | [`background_tasks/`](04_async_performance/background_tasks/background_tasks.py) | バックグラウンドタスク（レスポンス後の非同期処理） |
-| | [`external_api_call_with_httpx/`](04_async_performance/external_api_call_with_httpx/external_api_call_with_httpx.py) | 外部API非同期呼び出し（httpx） |
-| **05_middleware** | [`request_logging_middleware/`](05_middleware/request_logging_middleware/request_logging_middleware.py) | リクエストログ記録ミドルウェア |
-| | [`structured_logging/`](05_middleware/structured_logging/structured_logging.py) | 構造化ログ（JSON形式・CloudWatch対応） |
-| **06_deploy** | [`cloudwatch_logging/`](06_deploy/cloudwatch_logging/cloudwatch_logging.py) | CloudWatch Logs へのログ送信（watchtower） |
-| | [`docker/`](06_deploy/docker/) | Docker コンテナ化（Dockerfile・compose） |
-| | [`health_check_endpoint/`](06_deploy/health_check_endpoint/health_check_endpoint.py) | ヘルスチェック（ECS/ALB対応） |
-| | [`startup_shutdown_events/`](06_deploy/startup_shutdown_events/startup_shutdown_events.py) | 起動・終了イベント管理（lifespan） |
+| **01_lifecycle** | [`lifespan_basics/`](01_lifecycle/lifespan_basics/lifespan_basics.py) | 共有リソースの生成と破棄、起動時に疎通確認をしない理由 |
+| | [`health_endpoints/`](01_lifecycle/health_endpoints/health_endpoints.py) | livez / readyz / startupz の分離、readiness に依存を含める判断 |
+| | [`graceful_shutdown/`](01_lifecycle/graceful_shutdown/graceful_shutdown.py) | シャットダウン4段階、処理中リクエストの待機 |
+| **02_outbound** | [`shared_client/`](02_outbound/shared_client/shared_client.py) | クライアントの生成場所、コネクションプール上限 |
+| | [`timeout_layers/`](02_outbound/timeout_layers/timeout_layers.py) | connect/read/write/pool、階層の逆転チェック |
+| | [`retry_backoff/`](02_outbound/retry_backoff/retry_backoff.py) | リトライ対象の選別、指数バックオフ＋ジッタ、リトライ予算 |
+| | [`circuit_breaker/`](02_outbound/circuit_breaker/circuit_breaker.py) | Closed / Open / Half-Open の3状態 |
+| | [`idempotency_key/`](02_outbound/idempotency_key/idempotency_key.py) | 非冪等処理を安全にリトライする |
+| **03_observability** | [`request_id/`](03_observability/request_id/request_id.py) | X-Amzn-Trace-Id の受け取り、ContextVar、下流への伝搬 |
+| | [`json_logging/`](03_observability/json_logging/json_logging.py) | 必須フィールド、request_id の自動差し込み、出力先の判断 |
+| | [`access_log_middleware/`](03_observability/access_log_middleware/access_log_middleware.py) | try/finally、ヘルスチェック除外、XFF からのクライアントIP |
+| | [`log_masking/`](03_observability/log_masking/log_masking.py) | ログに載せてはいけないもの、マスク関数 |
+| | [`red_metrics/`](03_observability/red_metrics/red_metrics.py) | Rate / Errors / Duration、ヒストグラム、カーディナリティ |
+| | [`tracing_otel/`](03_observability/tracing_otel/tracing_otel.py) | トレース・スパン・伝搬、ログ/メトリクスとの役割分担 |
+| **04_failure** | [`exception_handlers/`](04_failure/exception_handlers/exception_handlers.py) | 統一エラー形式、未捕捉例外を外に出さず内に残す |
+| | [`status_code_policy/`](04_failure/status_code_policy/status_code_policy.py) | ステータスコードの判断表、429 と Retry-After |
+| | [`sli_error_budget/`](04_failure/sli_error_budget/sli_error_budget.py) | SLI 定義文、SLO からエラーバジェットを計算する |
+| **05_async_pitfalls** | [`blocking_event_loop/`](05_async_pitfalls/blocking_event_loop/blocking_event_loop.py) | async def の中の同期処理、再現手順 |
+| | [`sync_vs_async/`](05_async_pitfalls/sync_vs_async/sync_vs_async.py) | def と async def の使い分け、スレッドプールの上限 |
+| | [`background_task_loss/`](05_async_pitfalls/background_task_loss/background_task_loss.py) | BackgroundTasks の寿命、キューへ逃がす判断 |
+| | [`pool_sizing/`](05_async_pitfalls/pool_sizing/pool_sizing.py) | ワーカー数 × タスク数 × プール上限の検算 |
+| **06_runtime** | [`docker/`](06_runtime/docker/) | マルチステージ、非 root、ダイジェスト指定、exec 形式の CMD |
+| | [`signal_handling/`](06_runtime/signal_handling/signal_handling.py) | PID 1 問題、SIGTERM がアプリに届くかの確認 |
+| **07_integrated** | [`app/`](07_integrated/app/) | 01〜06 を統合した動くアプリ |
+
+各章のフォルダに `README.md` があり、その章の合格基準が入っています。
 
 ---
 
 ## 🚀 セットアップ
 
 ```bash
-# venv を使う場合
 python -m venv .venv
-source .venv/bin/activate        # Mac/Linux
-venv\Scripts\activate         # Windows
-
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-各サンプルの起動と確認:
+各サンプルの起動:
 
 ```bash
-# 例: バリデーションのサンプルを起動
-uvicorn validation:app --reload      # ファイルのあるディレクトリで実行
+cd 01_lifecycle/graceful_shutdown
+uvicorn graceful_shutdown:app --reload
+```
 
-# ブラウザで Swagger UI を開く
-http://localhost:8000/docs
+スクリプトとして実行するもの（サーバ不要）:
+
+```bash
+python 02_outbound/timeout_layers/timeout_layers.py     # 階層の逆転チェック
+python 03_observability/json_logging/json_logging.py    # ログ出力の確認
+python 03_observability/log_masking/log_masking.py      # マスキングの確認
+python 04_failure/sli_error_budget/sli_error_budget.py  # エラーバジェット計算
+python 05_async_pitfalls/pool_sizing/pool_sizing.py     # 接続数の検算
+```
+
+統合アプリ:
+
+```bash
+cd 07_integrated
+uvicorn app.main:app --port 8000 --timeout-graceful-shutdown 60
 ```
 
 ---
 
-## 📄 サンプル詳細
+## 📅 5日間の割り当て
 
-### 01_request_response — 入出力の設計
-
-| ファイル | 学ぶこと | 使いどころ | 補足 |
+| 日 | 章 | 主な作業 | 成果物 |
 |---|---|---|---|
-| [pagination.py](01_request_response/pagination/pagination.py) | `offset/limit` 方式と `cursor` 方式の実装差。`Depends` に渡す `PaginationParams` クラスで共通パラメーターを再利用。 | 一覧APIの標準装備。件数が多い・追記が頻繁なテーブルではカーソル方式が有利。 | ― |
-| [response_model_filtering.py](01_request_response/response_model_filtering/response_model_filtering.py) | `response_model` による自動フィルタ、`response_model_exclude` / `response_model_include` の使い分け。`ConfigDict(from_attributes=True)` でORMから変換。 | `password` / `salt` など内部モデルにあるが外に出せないフィールドの漏洩防止。セキュリティ設計の基本。 | ― |
-| [unified_response_format.py](01_request_response/unified_response_format/unified_response_format.py) | `Generic[T]` で成功・失敗・一覧を `status` / `message` / `data` の同一構造で返す。 | フロントとの契約を安定させたいとき。クライアント側のハンドリングが単純化する。 | ― |
-| [validation.py](01_request_response/validation/validation.py) | `Field` 制約（min_length / max_length / pattern / ge / le）、`@field_validator`（単一フィールド）、`@model_validator(mode="after")`（複数またぎ・パスワード一致確認）。 | 入力仕様の宣言的な定義。ビジネスルール（予約語禁止・確認用パスワード一致）はバリデーター側へ寄せる。 | ― |
-
-### 02_error_handling — 異常系の設計（01 とセットで）
-
-| ファイル | 学ぶこと | 使いどころ | 補足 |
-|---|---|---|---|
-| [http_exception_usage.py](02_error_handling/http_exception_usage/http_exception_usage.py) | `status_code` / `detail`（文字列 or dict）/ `headers`（認証エラー時の `WWW-Authenticate` 等）の指定。`status` 定数（`HTTP_404_NOT_FOUND`）の活用。 | 4xx/5xx を意図通りに返す基本。`detail` を dict にするとエラーコードを機械可読で返せる。 | `from fastapi import status` に統一（`starlette.status` と同一）。 |
-| [validation_error_response_format.py](02_error_handling/validation_error_response_format/validation_error_response_format.py) | `@app.exception_handler(RequestValidationError)` を上書きし、`field` / `message` / `input` を含む分かりやすいJSONに整形。 | 標準の422レスポンスは冗長。フロントに優しい形へ統一したいとき。01 の validation の裏返し。 | ― |
-
-### 03_auth_security — 認証・認可
-
-| ファイル | 学ぶこと | 使いどころ | 補足 |
-|---|---|---|---|
-| [api_key_authentication.py](03_auth_security/api_key_authentication/api_key_authentication.py) | `APIKeyHeader` / `APIKeyQuery` でキーを取得し、`Security` 依存で検証。`auto_error=False` でヘッダー・クエリ両対応。 | マシン間認証（バックエンド間通信・外部サービス連携）。ユーザーログインを伴わない場面。 | ― |
-| [role_based_access_control.py](03_auth_security/role_based_access_control/role_based_access_control.py) | JWTペイロードに `role` を含め、`require_role(*roles)` ファクトリで「必要ロールを満たす依存」を生成して注入。admin / user / guest を例示。 | エンドポイント単位のアクセス制御。ファクトリ + `Depends` は FastAPI らしい再利用パターン。 | JWTに `PyJWT` を採用。`exp` は tz-aware（`datetime.now(timezone.utc)`）、失効・改ざんは `jwt.InvalidTokenError` で捕捉。 |
-
-### 04_async_performance — 非同期・パフォーマンス
-
-| ファイル | 学ぶこと | 使いどころ | 補足 |
-|---|---|---|---|
-| [background_tasks.py](04_async_performance/background_tasks/background_tasks.py) | `BackgroundTasks.add_task()` でレスポンス返却後に処理を実行。 | メール送信・ログ記録・通知など待たせたくない軽量処理。重い/信頼性が要る処理は Celery や SQS 等へ。 | ― |
-| [external_api_call_with_httpx.py](04_async_performance/external_api_call_with_httpx/external_api_call_with_httpx.py) | `httpx.AsyncClient`、`Timeout(connect/read/write/pool)` の個別設定、リトライ、`async with` でのリソース管理と例外変換（504/503）。 | `async def` から外部APIを叩くとき。同期の `requests` はイベントループをブロックするので不可。 | ― |
-
-### 05_middleware — 横断処理
-
-| ファイル | 学ぶこと | 使いどころ | 補足 |
-|---|---|---|---|
-| [request_logging_middleware.py](05_middleware/request_logging_middleware/request_logging_middleware.py) | `@app.middleware("http")` で全リクエストをインターセプト。`call_next` の前後でメソッド・パス・IP・処理時間・ステータスを記録。 | アクセスログ・処理時間計測の共通化。例外時のログも一元化できる。 | ― |
-| [structured_logging.py](05_middleware/structured_logging/structured_logging.py) | `logging.Formatter` 継承の自作 `JsonFormatter` でJSON化。`timestamp` / `level` / `message` / `module` 等を構造化し、`extra` で任意付与。 | CloudWatch Logs Insights など、JSONログ前提で検索・集計する運用。 | 自作 `JsonFormatter`（追加ライブラリ不要）でJSON出力。タイムスタンプは tz-aware（UTC）。 |
-
-### 06_deploy — 運用・デプロイ
-
-| ファイル | 学ぶこと | 使いどころ | 補足 |
-|---|---|---|---|
-| [cloudwatch_logging.py](06_deploy/cloudwatch_logging/cloudwatch_logging.py) | `watchtower.CloudWatchLogHandler` と JSON フォーマッタの組み合わせ。必要IAM（`logs:CreateLogGroup` / `CreateLogStream` / `PutLogEvents`）。 | ECS/Lambda 等から直接 CloudWatch へ送るケース。 | `watchtower` はコメントアウト状態で `StreamHandler` にフォールバック。<br>ECS で標準出力を awslogs ドライバで拾う構成なら watchtower 不要。 |
-| [docker/](06_deploy/docker/) | マルチステージビルド・非root実行の `Dockerfile`。compose で app + PostgreSQL + pgAdmin の3サービス、`depends_on` の `service_healthy` 条件、`healthcheck`。 | ローカルでのDB込み動作確認・本番イメージの雛形。 | 起動手順は [`docker/README.md`](06_deploy/docker/README.md) 参照。 |
-| [health_check_endpoint.py](06_deploy/health_check_endpoint/health_check_endpoint.py) | `/health`（軽量・死活）/ `/ready`（DB等の準備確認・503を返す）/ `/live`（プロセス生存）の使い分け。 | ALB/ECS/K8s のヘルスチェック。軽量な死活と依存確認を分ける。 | ― |
-| [startup_shutdown_events.py](06_deploy/startup_shutdown_events/startup_shutdown_events.py) | `@asynccontextmanager` の `lifespan`（`yield` 前=起動、後=終了）。旧 `@app.on_event` との比較。 | DB接続プール・Redis・外部疎通確認の初期化とクリーンアップ。 | FastAPI 0.93+ は lifespan 推奨（`on_event` は非推奨）。 |
+| 1日目 | 01 | lifespan と health を直し、シャットダウン4段階を実装 | 動くシャットダウン処理 |
+| 2日目 | 02 | クライアントを使い回す形に直し、バックオフとサーキットブレーカを実装 | 修正版 HTTP クライアント |
+| 3日目 | 03 | リクエストID伝搬とアクセスログを整備し、`/metrics` を追加 | RED メトリクスの公開 |
+| 4日目 | 04 + 05 | 例外ハンドラと SLI 定義、ブロッキングの再現実験 | SLI 定義文、実験メモ |
+| 5日目 | 06 + 07 | Dockerfile の書き換え、全体を1つのアプリに統合 | 統合版アプリ一式 |
 
 ---
 
-## 🔧 技術メモ（対応状況）
+## 🔗 ネットワーク・セキュリティロードマップとの対応
 
-- **JWTライブラリ**: `python-jose` → `PyJWT` へ移行済み（`role_based_access_control.py` / ルート `requirements.txt`）。例外は `jwt.InvalidTokenError` で捕捉。
-- **`datetime` のタイムゾーン**: `datetime.utcnow()`（3.12で非推奨）を廃し、`datetime.now(timezone.utc)`（tz-aware）に統一済み（`structured_logging.py` / `cloudwatch_logging.py` / RBAC の `exp`）。
-- **`status` の import 元**: `fastapi.status` に統一済み（`http_exception_usage.py`）。
-- **`06_deploy/docker/requirements.txt`**: バージョン固定（`fastapi==0.104.1` 等・2023年頃）と `python-jose` は**据え置き**。フリマアプリ本体のデプロイ用マニフェストのため、アプリ側の移行に合わせて更新するのが安全。
-- **`on_event`**: `startup_shutdown_events.py` は新旧比較のため意図的に併記（新規は `lifespan`）。修正不要。
+12月に学んだ概念が、コードでどう現れるかを確認する構成です。重複ではなく往復です。
+
+| ここで直すこと | ロードマップの項目 |
+|---|---|
+| クライアントを使い回す | 第1部1章 エフェメラルポート枯渇 / SNATポート枯渇 / コネクションプール |
+| タイムアウトの階層 | 第1部5章 タイムアウトの階層設計、3章 504 |
+| バックオフとジッタ | 第1部5章 リトライとサーキットブレーカ、リトライストーム |
+| 冪等キー | 第1部3章 冪等性とリトライ |
+| シャットダウン順序 | 第1部3章 502、5章 コネクションドレイニング |
+| ヘルスチェック設計 | 第1部5章 ヘルスチェック設計 |
+| 構造化ログ・アクセスログ | 第1部8章 ALBアクセスログ、ネットワーク可観測性 |
+| プールサイズの検算 | 第1部1章 コネクションプール、9章 キャパシティ |
+
+---
+
+## 🔧 技術メモ
+
+- **Python 3.11+ を前提**（`X | None` 記法、`asyncio.to_thread` を使用）
+- **`JSONResponse` の引数順**: 第1引数は `content`。`JSONResponse(503, {...})` と
+  書くと `status_code` に dict が入り `TypeError` になります。必ずキーワード指定で
+- **未捕捉例外と ContextVar**: 未捕捉例外を処理する `ServerErrorMiddleware` は
+  自作ミドルウェアより外側にあり、そこへ到達する頃には ContextVar が reset 済みです。
+  `request.state` にも request_id を持たせて拾えるようにしています
+  （`07_integrated/app/observability.py` と `errors.py` を参照）
+- **ミドルウェアの順序**: 後から `add` したものが外側になります。リクエストIDは
+  最も外側で採番したいので、`observability.install` を最後に呼びます
+- **`@app.on_event`** は非推奨です。新規は `lifespan` を使ってください
+  （`health_endpoints.py` のみ単体動作のため使用）
